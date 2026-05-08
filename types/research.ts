@@ -17,6 +17,19 @@ export interface StudyStage {
   summary: string;
 }
 
+export type PreferNotToAnswer = "Prefer not to answer";
+
+export interface ParticipantProfile {
+  ageGroup: string;
+  gender: string;
+  subjectiveEconomicStatus: number | PreferNotToAnswer | null;
+  medicalCostPressure: string;
+  healthcareCoverage: string;
+  specialOrganizationalCoverage: string;
+  inequalityOrientation: number | null;
+  institutionalTrust: number | null;
+}
+
 export interface ParticipantBackground {
   ageRange?: string;
   education?: string;
@@ -97,6 +110,7 @@ export interface ResearchSession {
   createdAt: string;
   currentStage: StageId;
   background: ParticipantBackground;
+  participantProfile?: ParticipantProfile;
   responses: Record<string, unknown>;
   game?: HiddenCostGameState;
   preRevealSurvey?: PreRevealSurveyAnswers;

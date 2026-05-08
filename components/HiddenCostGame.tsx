@@ -29,6 +29,18 @@ export function HiddenCostGame() {
 
   useEffect(() => {
     const storedSession = getStoredSession("game");
+
+    if (!storedSession.participantProfile) {
+      const backgroundSession: ResearchSession = {
+        ...storedSession,
+        currentStage: "background",
+      };
+
+      saveStoredSession(backgroundSession);
+      router.replace("/background");
+      return;
+    }
+
     const nextGame = storedSession.game?.completedAt ? createHiddenCostGameState() : storedSession.game ?? createHiddenCostGameState();
     const nextSession = {
       ...storedSession,
@@ -40,7 +52,7 @@ export function HiddenCostGame() {
     setSession(nextSession);
     setGame(nextGame);
     setRoundStartedAt(Date.now());
-  }, []);
+  }, [router]);
 
   const currentEvent = game ? medicalEvents[game.currentRoundIndex] : undefined;
   const actualFullCost = useMemo(() => {
