@@ -6,7 +6,7 @@ import { SiteShell } from "@/components/SiteShell";
 export default function ExportPage() {
   return (
     <SiteShell currentStage="export">
-      <PageHeader title="Research data export" description="Version one supports local JSON review, copying, and download before a backend is introduced." />
+      <PageHeader title="Research data export" description="Review, copy, or download the local JSON record for this completed prototype session." />
       <Card>
         <ExportPanel />
       </Card>

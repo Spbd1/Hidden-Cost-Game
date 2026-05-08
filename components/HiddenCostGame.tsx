@@ -41,7 +41,18 @@ export function HiddenCostGame() {
       return;
     }
 
-    const nextGame = storedSession.game?.completedAt ? createHiddenCostGameState() : storedSession.game ?? createHiddenCostGameState();
+    if (storedSession.game?.completedAt) {
+      const completedSession: ResearchSession = {
+        ...storedSession,
+        currentStage: "results",
+      };
+
+      saveStoredSession(completedSession);
+      router.replace("/results");
+      return;
+    }
+
+    const nextGame = storedSession.game ?? createHiddenCostGameState();
     const nextSession = {
       ...storedSession,
       currentStage: "game" as const,
@@ -146,7 +157,7 @@ export function HiddenCostGame() {
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-ink">{currentEvent.eventName}</h2>
           <p className="mt-3 max-w-2xl leading-7 text-slate-600">
-            A medical event has occurred. Choose how much care to receive while balancing your financial and health points.
+            Choose how much care to receive while balancing financial and health points. The point values are part of a simplified simulation, not a judgment of real-life healthcare decisions.
           </p>
         </div>
         <div className="rounded-2xl border border-research-100 bg-research-50 px-5 py-4 text-sm font-semibold text-research-800">
@@ -160,8 +171,8 @@ export function HiddenCostGame() {
         <StatusCard label="Skipping risk" value={currentEvent.skipRisk} />
       </div>
 
-      <div className="rounded-2xl bg-slate-50 p-4 text-sm font-medium text-slate-700">
-        You only see the costs assigned to you.
+      <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-700">
+        You only see the costs assigned to your displayed profile. Other players may or may not have the same cost conditions.
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
