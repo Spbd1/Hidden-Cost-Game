@@ -8,6 +8,7 @@ const displayedProfileSchema = z.enum(["Profile A", "Profile B"]);
 const hiddenProfileSchema = z.enum(["High coverage", "Low coverage"]);
 const gameChoiceSchema = z.enum(["full-treatment", "partial-treatment", "skip-treatment"]);
 const medicalRiskLevelSchema = z.enum(["low", "medium", "high"]);
+const serverSubmissionStatusSchema = z.enum(["not_enabled", "not_submitted", "submitting", "submitted", "failed"]);
 
 export const participantProfileSchema = z
   .object({
@@ -134,7 +135,10 @@ export const researchExportSchema = z
     schemaVersion: z.string().min(1),
     exportVersion: z.string().min(1),
     sessionId: z.string().min(1),
-    consentVersion: z.string().min(1).optional(),
+    consentVersion: z.string().min(1),
+    serverSubmissionStatus: serverSubmissionStatusSchema,
+    serverSubmissionId: z.string().min(1).optional(),
+    serverSubmittedAt: isoDateStringSchema.optional(),
     createdAt: isoDateStringSchema.optional(),
     sessionCreatedAt: isoDateStringSchema.optional(),
     assignedProfile: assignedProfileSchema,

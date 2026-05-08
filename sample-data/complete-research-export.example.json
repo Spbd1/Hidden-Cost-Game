@@ -3,6 +3,7 @@
   "schemaVersion": "research-export-v1",
   "sessionId": "hcg-example-session",
   "consentVersion": "pilot-consent-v1",
+  "serverSubmissionStatus": "not_submitted",
   "createdAt": "2026-05-08T00:00:00.000Z",
   "sessionCreatedAt": "2026-05-08T00:00:00.000Z",
   "preRevealSurveyStartedAt": "2026-05-08T00:10:00.000Z",

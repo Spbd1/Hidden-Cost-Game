@@ -72,6 +72,10 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
     revealViewedAt: candidate.revealViewedAt,
     postRevealSurveyStartedAt: candidate.postRevealSurveyStartedAt,
     postRevealSurveyCompletedAt: candidate.postRevealSurveyCompletedAt,
+    serverSubmissionStatus: candidate.serverSubmissionStatus,
+    serverSubmissionId: candidate.serverSubmissionId,
+    serverSubmittedAt: candidate.serverSubmittedAt,
+    serverSubmissionError: candidate.serverSubmissionError,
   };
 }
 

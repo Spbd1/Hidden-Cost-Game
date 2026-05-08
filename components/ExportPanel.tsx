@@ -3,12 +3,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { buildResearchExport, getResearchExportCompleteness } from "@/utils/researchMetrics";
 import { STORAGE_KEY, createInitialSession, getStoredSession, safeJsonStringify, saveStoredSession } from "@/utils/session";
-import type { ResearchExport, ResearchSession } from "@/types/research";
+import type { ResearchExport, ResearchSession, ServerSubmissionStatus } from "@/types/research";
 
 type ExportPanelProps = {
   session?: ResearchSession | null;
   title?: string;
 };
+
+type SubmissionResponse = {
+  ok: boolean;
+  serverSubmissionId?: string;
+  submittedAt?: string;
+  error?: string;
+};
+
+const isServerSubmissionEnabled = process.env.NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION === "true";
 
 const emptySession: ResearchSession = {
   sessionId: "pending-local-session",
@@ -19,9 +28,9 @@ const emptySession: ResearchSession = {
 };
 
 export function ExportPanel({ session: providedSession, title = "Research JSON export" }: ExportPanelProps) {
-  const [storedSession, setStoredSession] = useState<ResearchSession>(emptySession);
+  const [storedSession, setStoredSession] = useState<ResearchSession>(providedSession ?? emptySession);
   const [copyStatus, setCopyStatus] = useState("Copy JSON");
-  const session = providedSession ?? storedSession;
+  const session = storedSession;
   const completeness = useMemo(() => getResearchExportCompleteness(session), [session]);
   const exportData = useMemo<ResearchExport | ResearchSession>(() => buildResearchExport(session, new Date().toISOString()) ?? session, [session]);
   const json = useMemo(() => safeJsonStringify(exportData), [exportData]);
@@ -29,19 +38,32 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
 
   useEffect(() => {
     if (providedSession) {
+      const nextSession = normalizeSubmissionStatus(providedSession);
+      saveStoredSession(nextSession);
+      setStoredSession(nextSession);
       return;
     }
 
     try {
-      const exportSession = { ...getStoredSession("export"), currentStage: "export" as const };
+      const exportSession = normalizeSubmissionStatus({ ...getStoredSession("export"), currentStage: "export" as const });
       saveStoredSession(exportSession);
       setStoredSession(exportSession);
     } catch {
-      const initialSession = createInitialSession("export");
+      const initialSession = normalizeSubmissionStatus(createInitialSession("export"));
       saveStoredSession(initialSession);
       setStoredSession(initialSession);
     }
   }, [providedSession]);
+
+  function persistSubmissionMetadata(updates: Partial<ResearchSession>) {
+    const updatedSession = {
+      ...session,
+      ...updates,
+    };
+
+    saveStoredSession(updatedSession);
+    setStoredSession(updatedSession);
+  }
 
   async function handleCopy() {
     await navigator.clipboard.writeText(json);
@@ -66,6 +88,53 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
     link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
+  }
+
+  async function handleSubmit({ force = false }: { force?: boolean } = {}) {
+    if (!isServerSubmissionEnabled || !("computedMetrics" in exportData)) {
+      return;
+    }
+
+    if (session.serverSubmissionStatus === "submitted" && !force) {
+      return;
+    }
+
+    if (force && !window.confirm("Submit this anonymous session again? This may create a duplicate server record.")) {
+      return;
+    }
+
+    const payloadJson = json;
+    persistSubmissionMetadata({
+      serverSubmissionStatus: "submitting",
+      serverSubmissionError: undefined,
+    });
+
+    try {
+      const response = await fetch("/api/submissions", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: payloadJson,
+      });
+      const responseBody = (await response.json().catch(() => null)) as SubmissionResponse | null;
+
+      if (!response.ok || !responseBody?.ok || !responseBody.serverSubmissionId || !responseBody.submittedAt) {
+        throw new Error(responseBody?.error ?? "Submission failed. Please try again.");
+      }
+
+      persistSubmissionMetadata({
+        serverSubmissionStatus: "submitted",
+        serverSubmissionId: responseBody.serverSubmissionId,
+        serverSubmittedAt: responseBody.submittedAt,
+        serverSubmissionError: undefined,
+      });
+    } catch (error) {
+      persistSubmissionMetadata({
+        serverSubmissionStatus: "failed",
+        serverSubmissionError: error instanceof Error ? error.message : "Submission failed. Please try again.",
+      });
+    }
   }
 
   return (
@@ -94,7 +163,96 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
         {completeness.isComplete ? "Export is complete and includes the background profile, game rounds, surveys, and computed metrics." : "Export is not complete yet. Continue the study flow to include all game rounds, surveys, and metrics."}
       </div>
 
+      <SubmissionPanel
+        status={session.serverSubmissionStatus ?? (isServerSubmissionEnabled ? "not_submitted" : "not_enabled")}
+        serverSubmissionId={session.serverSubmissionId}
+        serverSubmittedAt={session.serverSubmittedAt}
+        serverSubmissionError={session.serverSubmissionError}
+        canSubmit={completeness.isComplete && "computedMetrics" in exportData}
+        onSubmit={() => handleSubmit()}
+        onSubmitAgain={() => handleSubmit({ force: true })}
+      />
+
       <pre className="max-h-[28rem] overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100 sm:p-5 sm:text-sm"><code>{json}</code></pre>
     </div>
   );
+}
+
+function normalizeSubmissionStatus(session: ResearchSession): ResearchSession {
+  if (!isServerSubmissionEnabled) {
+    return {
+      ...session,
+      serverSubmissionStatus: "not_enabled",
+      serverSubmissionError: undefined,
+    };
+  }
+
+  return {
+    ...session,
+    serverSubmissionStatus: session.serverSubmissionStatus === "not_enabled" ? "not_submitted" : session.serverSubmissionStatus ?? "not_submitted",
+  };
+}
+
+function SubmissionPanel({
+  status,
+  serverSubmissionId,
+  serverSubmittedAt,
+  serverSubmissionError,
+  canSubmit,
+  onSubmit,
+  onSubmitAgain,
+}: {
+  status: ServerSubmissionStatus;
+  serverSubmissionId?: string;
+  serverSubmittedAt?: string;
+  serverSubmissionError?: string;
+  canSubmit: boolean;
+  onSubmit: () => void;
+  onSubmitAgain: () => void;
+}) {
+  if (!isServerSubmissionEnabled) {
+    return <p className="rounded-2xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">Server submission is disabled in this build. You can still copy or download the JSON export.</p>;
+  }
+
+  return (
+    <div className="rounded-3xl border border-research-100 bg-research-50 p-5 text-sm leading-6 text-research-950">
+      <h3 className="text-xl font-semibold text-ink">Submit this anonymous session</h3>
+      <p className="mt-2 max-w-3xl">
+        Your data is currently stored only in this browser. You may optionally submit this completed anonymous session to the research server. Do not submit if you do not want this prototype data stored outside your device.
+      </p>
+
+      {status === "submitted" && serverSubmissionId && serverSubmittedAt ? (
+        <div className="mt-4 space-y-3">
+          <p className="rounded-2xl bg-white p-4 font-medium text-emerald-800">
+            This session was submitted on {formatSubmittedAt(serverSubmittedAt)}. Submission ID: {serverSubmissionId}.
+          </p>
+          <button onClick={onSubmitAgain} className="rounded-full border border-research-300 bg-white px-4 py-2 text-xs font-semibold text-research-700 transition hover:border-research-600 focus:outline-none focus:ring-4 focus:ring-research-100">
+            Submit again
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {status === "failed" && serverSubmissionError ? <p className="rounded-2xl bg-rose-50 p-4 font-medium text-rose-800">{serverSubmissionError}</p> : null}
+          {!canSubmit ? <p className="rounded-2xl bg-amber-50 p-4 font-medium text-amber-900">Complete the session before submitting to the research server.</p> : null}
+          <button
+            onClick={onSubmit}
+            disabled={!canSubmit || status === "submitting"}
+            className="rounded-full bg-research-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-research-700 disabled:cursor-not-allowed disabled:bg-slate-300 focus:outline-none focus:ring-4 focus:ring-research-100"
+          >
+            {status === "submitting" ? "Submitting..." : "Submit anonymous session"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function formatSubmittedAt(value: string): string {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleString();
 }

@@ -14,6 +14,7 @@ import type {
 
 export const RESEARCH_EXPORT_VERSION = "prototype-1.1";
 export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-2";
+export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
   "full-treatment": "fullTreatmentChoices",
@@ -194,6 +195,10 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     exportVersion: RESEARCH_EXPORT_VERSION,
     schemaVersion: RESEARCH_SCHEMA_VERSION,
     sessionId: session.sessionId,
+    consentVersion: RESEARCH_CONSENT_VERSION,
+    serverSubmissionStatus: session.serverSubmissionStatus ?? "not_submitted",
+    ...(session.serverSubmissionId ? { serverSubmissionId: session.serverSubmissionId } : {}),
+    ...(session.serverSubmittedAt ? { serverSubmittedAt: session.serverSubmittedAt } : {}),
     createdAt,
     sessionCreatedAt: session.createdAt,
     preRevealSurveyStartedAt: session.preRevealSurveyStartedAt,
