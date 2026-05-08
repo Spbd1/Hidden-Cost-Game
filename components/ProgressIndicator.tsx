@@ -10,27 +10,27 @@ export function ProgressIndicator({ currentStage }: ProgressIndicatorProps) {
   const currentIndex = studyStages.findIndex((stage) => stage.id === currentStage);
 
   return (
-    <nav aria-label="Study progress" className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm">
-      <ol className="grid gap-3 md:grid-cols-3 lg:grid-cols-9">
+    <nav aria-label="Study progress" className="rounded-2xl border border-slate-200 bg-white/90 px-3 py-2 shadow-sm">
+      <ol className="flex gap-2 overflow-x-auto pb-1 [scrollbar-width:thin]" role="list">
         {studyStages.map((stage, index) => {
           const isCurrent = stage.id === currentStage;
           const isComplete = index < currentIndex;
 
           return (
-            <li key={stage.id}>
+            <li key={stage.id} className="shrink-0">
               <Link
                 href={stage.href}
                 aria-current={isCurrent ? "step" : undefined}
-                className={`flex min-h-20 flex-col rounded-2xl border px-3 py-3 text-xs transition ${
+                title={`${stage.shortTitle}: ${stage.summary}`}
+                className={`inline-flex min-h-9 items-center rounded-full border px-3 py-1.5 text-[0.72rem] font-semibold leading-none transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-research-600 sm:text-xs ${
                   isCurrent
-                    ? "border-research-600 bg-research-50 text-research-900"
+                    ? "border-research-500 bg-research-50 text-research-800"
                     : isComplete
-                      ? "border-slate-200 bg-slate-50 text-slate-600 hover:border-research-100"
-                      : "border-slate-200 bg-white text-slate-500 hover:border-research-100"
+                      ? "border-slate-200 bg-slate-50 text-slate-600 hover:border-research-200 hover:text-research-700"
+                      : "border-slate-200 bg-white text-slate-500 hover:border-research-200 hover:text-slate-700"
                 }`}
               >
-                <span className="font-semibold">{String(index + 1).padStart(2, "0")}</span>
-                <span className="mt-1 font-medium">{stage.shortTitle}</span>
+                {stage.shortTitle}
               </Link>
             </li>
           );

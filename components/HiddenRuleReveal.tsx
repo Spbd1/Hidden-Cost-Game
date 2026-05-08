@@ -51,8 +51,15 @@ export function HiddenRuleReveal() {
           <br />
           Players assigned to low coverage paid the <strong className="font-semibold text-ink">full cost of treatment</strong>.
         </p>
-        <p>This means two players could choose care for the same medical event while facing different financial pressure. The aim is not to evaluate whether any participant is fair, unfair, good, or bad; responses should be interpreted cautiously.</p>
+        <p>This means two players could choose care for the same medical event while facing different financial pressure. This design is not intended to evaluate whether any participant is fair or unfair. It is meant to study how interpretations change when additional context becomes available. Responses should be interpreted cautiously.</p>
         <p>If you later choose to submit this anonymous session, the submitted data should be treated as exploratory prototype data rather than as a definitive measurement of you or anyone else.</p>
+      </div>
+
+      <div className="rounded-3xl border border-slate-200 bg-white p-5 leading-7 text-slate-700">
+        <h2 className="text-xl font-semibold text-ink">Why the task used incomplete information</h2>
+        <p className="mt-3">
+          The task first asks participants to interpret outcomes using only partial context. The debrief then explains the full scenario so the study can compare initial and revised interpretations. This is a common structure in behavioral research, but it should be used carefully and transparently.
+        </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
