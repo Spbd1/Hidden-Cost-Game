@@ -73,6 +73,15 @@ export interface HiddenCostGameState {
   rounds: GameRoundData[];
 }
 
+export interface PreRevealSurveyAnswers {
+  lowerScoreReason: string;
+  protestLegitimacy: number;
+  ruleChangeFairness: number;
+  successAttribution: number;
+  judgmentConfidence: number;
+  fellBehindExplanation: string;
+}
+
 export interface ResearchSession {
   sessionId: string;
   createdAt: string;
@@ -80,4 +89,5 @@ export interface ResearchSession {
   background: ParticipantBackground;
   responses: Record<string, unknown>;
   game?: HiddenCostGameState;
+  preRevealSurvey?: PreRevealSurveyAnswers;
 }

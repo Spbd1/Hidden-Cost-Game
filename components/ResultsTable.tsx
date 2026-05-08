@@ -1,17 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
-import { StageNavigation } from "@/components/StageNavigation";
 import { formatPoints } from "@/utils/game";
 import { getStoredSession, saveStoredSession } from "@/utils/session";
 import type { HiddenCostGameState, ResearchSession } from "@/types/research";
 
-const choiceText: Record<string, string> = {
-  "full-treatment": "Full treatment",
-  "partial-treatment": "Partial treatment",
-  "skip-treatment": "Skipped treatment",
-};
+const fictionalPlayers = [
+  { name: "Player 1", score: 164 },
+  { name: "Player 2", score: 82 },
+  { name: "Player 3", score: 139 },
+  { name: "Player 4", score: 61 },
+];
 
 export function ResultsTable() {
   const [game, setGame] = useState<HiddenCostGameState | null>(null);
@@ -27,70 +28,55 @@ export function ResultsTable() {
     setGame(nextSession.game ?? null);
   }, []);
 
+  const sortedPlayers = useMemo(() => {
+    if (!game) {
+      return [];
+    }
+
+    return [...fictionalPlayers, { name: "You", score: game.financialPoints }].sort((firstPlayer, secondPlayer) => secondPlayer.score - firstPlayer.score);
+  }, [game]);
+
   if (!game || game.rounds.length === 0) {
     return (
       <Card className="space-y-5">
-        <h2 className="text-2xl font-semibold text-ink">No completed game rounds yet</h2>
-        <p className="leading-7 text-slate-600">Play the decision game to generate your round-by-round results table.</p>
-        <StageNavigation currentStage="results" />
+        <h2 className="text-2xl font-semibold text-ink">No completed game yet</h2>
+        <p className="leading-7 text-slate-600">Play the decision game to generate your final results table.</p>
+        <ButtonLink href="/game">Go to game</ButtonLink>
       </Card>
     );
   }
 
   return (
     <Card className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-3">
-        <SummaryCard label="Final financial points" value={formatPoints(game.financialPoints)} />
-        <SummaryCard label="Final health points" value={formatPoints(game.healthPoints)} />
-        <SummaryCard label="Displayed profile" value={game.displayedProfile} />
-      </div>
+      <p className="rounded-2xl bg-slate-50 p-5 leading-7 text-slate-700">
+        At this stage, you can only see the final results. Not all rules of the game have been revealed yet. Please answer the
+        following questions based only on what you have seen so far.
+      </p>
 
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-left text-sm">
           <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
             <tr>
-              <th className="px-4 py-3 font-semibold">Round</th>
-              <th className="px-4 py-3 font-semibold">Event</th>
-              <th className="px-4 py-3 font-semibold">Choice</th>
-              <th className="px-4 py-3 font-semibold">Paid</th>
-              <th className="px-4 py-3 font-semibold">Financial before → after</th>
-              <th className="px-4 py-3 font-semibold">Health before → after</th>
-              <th className="px-4 py-3 font-semibold">Decision time</th>
+              <th className="px-4 py-3 font-semibold">Rank</th>
+              <th className="px-4 py-3 font-semibold">Player</th>
+              <th className="px-4 py-3 font-semibold">Final score</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-            {game.rounds.map((round) => (
-              <tr key={round.roundNumber}>
-                <td className="px-4 py-4 font-semibold text-ink">{round.roundNumber}</td>
-                <td className="px-4 py-4">{round.eventName}</td>
-                <td className="px-4 py-4">{choiceText[round.choice]}</td>
-                <td className="px-4 py-4">{formatPoints(round.paidCost)} pts</td>
-                <td className="px-4 py-4">
-                  {formatPoints(round.scoreBefore)} → {formatPoints(round.scoreAfter)}
-                </td>
-                <td className="px-4 py-4">
-                  {formatPoints(round.healthBefore)} → {formatPoints(round.healthAfter)}
-                </td>
-                <td className="px-4 py-4">{(round.decisionTimeMs / 1000).toFixed(1)}s</td>
+            {sortedPlayers.map((player, index) => (
+              <tr key={player.name} className={player.name === "You" ? "bg-research-50/70" : undefined}>
+                <td className="px-4 py-4 font-semibold text-ink">{index + 1}</td>
+                <td className="px-4 py-4 font-semibold text-ink">{player.name}</td>
+                <td className="px-4 py-4">{formatPoints(player.score)}</td>
               </tr>
             ))}
           </tbody>
         </table>
       </div>
 
-      <p className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
-        Your results table uses the profile label shown during play. The underlying profile meaning is reserved for the reveal stage.
-      </p>
-      <StageNavigation currentStage="results" />
+      <div className="flex justify-end border-t border-slate-200 pt-6">
+        <ButtonLink href="/pre-reveal-survey">Continue to questions</ButtonLink>
+      </div>
     </Card>
-  );
-}
-
-function SummaryCard({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl bg-slate-50 p-5">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-ink">{value}</p>
-    </div>
   );
 }

@@ -30,6 +30,13 @@ export const studyStages: StudyStage[] = [
     summary: "A placeholder for unequal-condition decision scenarios.",
   },
   {
+    id: "results",
+    title: "Final Results",
+    shortTitle: "Results",
+    href: "/results",
+    summary: "A pre-reveal comparison of the participant score and fictional player scores.",
+  },
+  {
     id: "pre-reveal",
     title: "Pre-reveal Survey",
     shortTitle: "Pre-survey",
@@ -49,13 +56,6 @@ export const studyStages: StudyStage[] = [
     shortTitle: "Post-survey",
     href: "/post-reveal-survey",
     summary: "Follow-up reflection after the unequal conditions are disclosed.",
-  },
-  {
-    id: "results",
-    title: "Individual Results",
-    shortTitle: "Results",
-    href: "/results",
-    summary: "Participant-facing summary of completed stages and response patterns.",
   },
   {
     id: "export",
