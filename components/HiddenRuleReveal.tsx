@@ -34,13 +34,13 @@ export function HiddenRuleReveal() {
   return (
     <Card className="space-y-8">
       <div className="space-y-5 rounded-3xl bg-slate-50 p-6 text-lg leading-8 text-slate-700">
-        <p>Until now, the game was designed so that you might assume all players were making decisions under similar conditions. However, treatment costs were not the same for everyone.</p>
+        <p>Until now, the visible results did not show whether all players faced the same cost conditions. In this simulation, treatment costs were not the same for everyone.</p>
         <p>
-          Some players had high coverage and paid only about <strong className="font-semibold text-ink">30% of treatment costs</strong>.
+          Players assigned to high coverage paid about <strong className="font-semibold text-ink">30% of treatment costs</strong>.
           <br />
-          Some players had low coverage and paid almost the <strong className="font-semibold text-ink">full cost of treatment</strong>.
+          Players assigned to low coverage paid the <strong className="font-semibold text-ink">full cost of treatment</strong>.
         </p>
-        <p>This means two players could face the same medical event while experiencing very different financial pressure.</p>
+        <p>This means two players could choose care for the same medical event while facing different financial pressure.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -56,7 +56,7 @@ export function HiddenRuleReveal() {
                 </div>
                 {isAssignedProfile ? <span className="rounded-full bg-research-600 px-3 py-1 text-xs font-semibold text-white">Your profile</span> : null}
               </div>
-              <p className="mt-5 text-sm font-medium text-slate-600">Cost multiplier</p>
+              <p className="mt-5 text-sm font-medium text-slate-600">Treatment cost multiplier</p>
               <p className="mt-1 text-4xl font-bold text-research-700">{profile.treatmentCostMultiplier.toFixed(1)}</p>
             </div>
           );

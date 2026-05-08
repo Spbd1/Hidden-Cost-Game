@@ -35,7 +35,16 @@ export function ResultsTable() {
   }, []);
 
   const game = session?.game ?? null;
-  const hasPostRevealSurvey = Boolean(session?.postRevealSurvey);
+  const hasCompletePostRevealSurvey = Boolean(
+    session?.postRevealSurvey &&
+      session.postRevealSurvey.lowerScoreReason &&
+      session.postRevealSurvey.protestLegitimacy > 0 &&
+      session.postRevealSurvey.ruleChangeFairness > 0 &&
+      session.postRevealSurvey.successAttribution > 0 &&
+      session.postRevealSurvey.initialJudgmentAccuracy > 0 &&
+      session.postRevealSurvey.viewChange > 0 &&
+      session.postRevealSurvey.viewChangeExplanation.trim(),
+  );
 
   const sortedPlayers = useMemo(() => {
     if (!game) {
@@ -55,15 +64,14 @@ export function ResultsTable() {
     );
   }
 
-  if (hasPostRevealSurvey && session?.preRevealSurvey && session.postRevealSurvey) {
+  if (hasCompletePostRevealSurvey && session?.preRevealSurvey && session.postRevealSurvey) {
     return <IndividualResults session={session} game={game} preRevealSurvey={session.preRevealSurvey} postRevealSurvey={session.postRevealSurvey} />;
   }
 
   return (
     <Card className="space-y-6">
       <p className="rounded-2xl bg-slate-50 p-5 leading-7 text-slate-700">
-        At this stage, you can only see the final results. Not all rules of the game have been revealed yet. Please answer the
-        following questions based only on what you have seen so far.
+        At this stage, you can see only the visible score table. Some rules have not been disclosed yet. Please answer the following questions based only on what you have seen so far.
       </p>
 
       <ResultsRankingTable players={sortedPlayers} />
@@ -96,7 +104,7 @@ function IndividualResults({
         <div className="rounded-2xl bg-research-50 p-5 leading-7 text-research-900">
           <h2 className="text-2xl font-semibold text-ink">Your individual results</h2>
           <p className="mt-3">
-            Your post-reveal answers have been saved. This page summarizes your game outcomes, compares your pre- and post-reveal judgments, and prepares a structured research export.
+            Your post-reveal answers have been saved. This page summarizes your game outcomes, compares pre- and post-reveal ratings, and prepares a structured JSON export.
           </p>
         </div>
 
@@ -109,12 +117,12 @@ function IndividualResults({
       </Card>
 
       <Card className="space-y-6">
-        <SectionHeading title="Computed research metrics" description="These derived values make the response pattern easier to analyze across prototype sessions." />
+        <SectionHeading title="Computed research metrics" description="These derived values summarize response patterns for prototype analysis. They should be interpreted cautiously and alongside the full context." />
         <MetricsGrid metrics={computedMetrics} />
       </Card>
 
       <Card className="space-y-6">
-        <SectionHeading title="Participant-facing interpretation" description="This interpretation is neutral, non-blaming, and based only on changes in your ratings." />
+        <SectionHeading title="Participant-facing interpretation" description="This neutral interpretation is based only on changes in your ratings. It does not evaluate whether any response is right or wrong." />
         <ul className="space-y-3">
           {interpretations.map((interpretation) => (
             <li key={interpretation} className="rounded-2xl bg-slate-50 p-4 leading-7 text-slate-700">
@@ -127,7 +135,7 @@ function IndividualResults({
       <Card className="space-y-6">
         <ExportPanel session={session} title="Research Export" />
         <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          This is an experimental prototype. In this version, data is stored only in your browser unless a research version with informed consent and secure storage is implemented.
+          This is an experimental prototype. Data is stored only in this browser unless you choose to copy or download it. A production research version would need formal consent materials and secure storage.
         </p>
       </Card>
     </div>
@@ -137,7 +145,7 @@ function IndividualResults({
 function GameSummarySection({ summary }: { summary: GameSummary }) {
   return (
     <div className="space-y-5">
-      <SectionHeading title="Game summary" description="A plain-language summary of the hidden profile and treatment choices from this run." />
+      <SectionHeading title="Game summary" description="A plain-language summary of the hidden cost profile and treatment choices from this run." />
       <div className="grid gap-4 md:grid-cols-3">
         <ResultCard label="Actual hidden profile" value={summary.actualHiddenProfile} />
         <ResultCard label="Final financial score" value={formatPoints(summary.finalFinancialScore)} />
@@ -161,7 +169,7 @@ function JudgmentChangeTable({ preRevealSurvey, postRevealSurvey }: { preRevealS
       after: postRevealSurvey.viewChangeExplanation,
     },
     {
-      label: "Explanation after reveal",
+      label: "Selected explanation for score differences",
       before: preRevealSurvey.lowerScoreReason,
       after: postRevealSurvey.lowerScoreReason,
     },
@@ -221,8 +229,8 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Fairness Support Shift", metrics.fairnessShift],
     ["Empathy / Perspective Shift", metrics.empathyShift],
     ["Certainty Correction", metrics.certaintyCorrection],
-    ["Burden Experienced", metrics.burden],
-    ["Care Avoidance", metrics.careAvoidance],
+    ["Cost burden ratio", metrics.burden],
+    ["Care avoidance index", metrics.careAvoidance],
   ] as const;
 
   return (

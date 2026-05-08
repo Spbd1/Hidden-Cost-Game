@@ -5,7 +5,7 @@ import { SiteShell } from "@/components/SiteShell";
 export default function HiddenRuleRevealPage() {
   return (
     <SiteShell currentStage="reveal">
-      <PageHeader title="Hidden rule reveal" description="The cost rule that shaped treatment decisions is now visible." />
+      <PageHeader title="Hidden rule reveal" description="The simulation now discloses how different cost conditions shaped the same healthcare choices." />
       <HiddenRuleReveal />
     </SiteShell>
   );

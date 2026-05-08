@@ -5,7 +5,7 @@ import { SiteShell } from "@/components/SiteShell";
 export default function ResultsPage() {
   return (
     <SiteShell currentStage="results">
-      <PageHeader title="Final results" description="Review the participant results for the current stage of the study." />
+      <PageHeader title="Final results" description="Review the visible score table and, after the reveal, a neutral summary of your response pattern." />
       <ResultsTable />
     </SiteShell>
   );

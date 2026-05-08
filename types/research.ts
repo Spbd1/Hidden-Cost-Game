@@ -141,15 +141,26 @@ export interface ResearchExportAssignedProfile {
 }
 
 export interface ResearchExport {
+  exportVersion: string;
   sessionId: string;
   createdAt: string;
-  participantProfile: HiddenProfileMeaning;
+  sessionCreatedAt: string;
+  participantProfile?: ParticipantProfile;
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
   preRevealSurvey: PreRevealSurveyAnswers;
   postRevealSurvey: PostRevealSurveyAnswers;
   computedMetrics: ComputedResearchMetrics;
+  completeness: ResearchExportCompleteness;
+}
+
+export interface ResearchExportCompleteness {
+  hasParticipantProfile: boolean;
+  completedGameRounds: number;
+  hasPreRevealSurvey: boolean;
+  hasPostRevealSurvey: boolean;
+  isComplete: boolean;
 }
 
 export interface ResearchSession {

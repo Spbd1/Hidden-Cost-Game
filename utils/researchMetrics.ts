@@ -1,7 +1,4 @@
-import {
-  ROUND_INCOME_POINTS,
-  STARTING_FINANCIAL_POINTS,
-} from "@/utils/game";
+import { ROUND_INCOME_POINTS, STARTING_FINANCIAL_POINTS } from "@/utils/game";
 import type {
   ComputedResearchMetrics,
   GameChoice,
@@ -10,9 +7,12 @@ import type {
   PostRevealSurveyAnswers,
   PreRevealSurveyAnswers,
   ResearchExport,
+  ResearchExportCompleteness,
   ResearchSession,
   TreatmentChoiceCounts,
 } from "@/types/research";
+
+export const RESEARCH_EXPORT_VERSION = "prototype-1.0";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
   "full-treatment": "fullTreatmentChoices",
@@ -76,7 +76,7 @@ export function calculateComputedResearchMetrics({
     fairnessShift: postRevealSurvey.ruleChangeFairness - preRevealSurvey.ruleChangeFairness,
     empathyShift: postRevealSurvey.viewChange,
     certaintyCorrection: preRevealSurvey.judgmentConfidence - postRevealSurvey.initialJudgmentAccuracy,
-    burden: roundMetric(summary.totalTreatmentCostPaid / summary.totalIncome),
+    burden: roundMetric(summary.totalTreatmentCostPaid / Math.max(summary.totalIncome, 1)),
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
   };
 }
@@ -85,38 +85,48 @@ export function buildParticipantInterpretation(metrics: ComputedResearchMetrics)
   const interpretations: string[] = [];
 
   if (metrics.protestShift > 0) {
-    interpretations.push("After learning about the unequal conditions, you rated low-scoring players’ protest as more legitimate.");
+    interpretations.push("After learning about the unequal conditions, your protest-legitimacy rating increased.");
   } else if (metrics.protestShift < 0) {
-    interpretations.push("After learning about the unequal conditions, you rated low-scoring players’ protest as less legitimate.");
+    interpretations.push("After learning about the unequal conditions, your protest-legitimacy rating decreased.");
   } else {
-    interpretations.push("Your rating of low-scoring players’ protest legitimacy stayed the same after the reveal.");
+    interpretations.push("Your protest-legitimacy rating stayed the same after the reveal.");
   }
 
   if (metrics.fairnessShift > 0) {
-    interpretations.push("After the reveal, your support for correcting the rules increased.");
+    interpretations.push("After the reveal, your support for adjusting the rules increased.");
   } else if (metrics.fairnessShift < 0) {
-    interpretations.push("After the reveal, your support for correcting the rules decreased.");
+    interpretations.push("After the reveal, your support for adjusting the rules decreased.");
   } else {
-    interpretations.push("Your support for correcting the rules stayed the same after the reveal.");
+    interpretations.push("Your support for adjusting the rules stayed the same after the reveal.");
   }
 
   if (metrics.individualAttributionPost < metrics.individualAttributionPre) {
-    interpretations.push("After the reveal, you placed more weight on system conditions than before.");
+    interpretations.push("After the reveal, your ratings placed relatively more weight on game conditions than before.");
   } else if (metrics.individualAttributionPost > metrics.individualAttributionPre) {
-    interpretations.push("After the reveal, you placed more weight on individual choices than before.");
+    interpretations.push("After the reveal, your ratings placed relatively more weight on individual choices than before.");
   } else {
-    interpretations.push("Your balance between individual-choice and system-condition explanations stayed the same after the reveal.");
+    interpretations.push("Your balance between individual-choice and game-condition explanations stayed the same after the reveal.");
   }
 
   if (metrics.certaintyCorrection > 0) {
-    interpretations.push("Your confidence before the reveal was higher than your later rating of your initial judgment’s accuracy.");
+    interpretations.push("Your pre-reveal confidence was higher than your later rating of that initial judgment’s accuracy.");
   } else if (metrics.certaintyCorrection < 0) {
-    interpretations.push("Your later rating of your initial judgment’s accuracy was higher than your confidence before the reveal.");
+    interpretations.push("Your later accuracy rating was higher than your pre-reveal confidence.");
   } else {
-    interpretations.push("Your pre-reveal confidence matched your later rating of your initial judgment’s accuracy.");
+    interpretations.push("Your pre-reveal confidence matched your later rating of that initial judgment’s accuracy.");
   }
 
   return interpretations;
+}
+
+export function getResearchExportCompleteness(session: ResearchSession): ResearchExportCompleteness {
+  return {
+    hasParticipantProfile: Boolean(session.participantProfile),
+    completedGameRounds: session.game?.rounds.length ?? 0,
+    hasPreRevealSurvey: Boolean(session.preRevealSurvey),
+    hasPostRevealSurvey: Boolean(session.postRevealSurvey),
+    isComplete: Boolean(session.participantProfile && session.game && session.preRevealSurvey && session.postRevealSurvey),
+  };
 }
 
 export function buildResearchExport(session: ResearchSession, createdAt = new Date().toISOString()): ResearchExport | null {
@@ -132,9 +142,11 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
   });
 
   return {
+    exportVersion: RESEARCH_EXPORT_VERSION,
     sessionId: session.sessionId,
     createdAt,
-    participantProfile: session.game.hiddenProfile,
+    sessionCreatedAt: session.createdAt,
+    participantProfile: session.participantProfile,
     assignedProfile: {
       displayedProfile: session.game.displayedProfile,
       hiddenProfile: session.game.hiddenProfile,
@@ -145,6 +157,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     preRevealSurvey: session.preRevealSurvey,
     postRevealSurvey: session.postRevealSurvey,
     computedMetrics,
+    completeness: getResearchExportCompleteness(session),
   };
 }
 
