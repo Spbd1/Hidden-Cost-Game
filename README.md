@@ -141,6 +141,33 @@ The metrics are simple derived values for prototype analysis. They should not be
 - **Care avoidance index**: skipped treatments plus half of partial treatments.
 - **Attribution Category Shift**: pre-reveal primary attribution compared with post-reveal revised primary attribution.
 
+
+## Researcher admin export
+
+Protected admin export endpoints let a researcher retrieve server-submitted study data when `ENABLE_SERVER_SUBMISSION=true`, `DATABASE_URL`, and `ADMIN_EXPORT_TOKEN` are configured on the server. Keep `ADMIN_EXPORT_TOKEN` secret; requests must send it as a bearer token. These endpoints are intended for researcher use only and are not linked from the participant UI.
+
+JSON export example:
+
+```bash
+curl -H "Authorization: Bearer YOUR_ADMIN_EXPORT_TOKEN" \
+  "https://your-domain.com/api/admin/submissions?limit=100" \
+  -o submissions.json
+```
+
+CSV export example:
+
+```bash
+curl -H "Authorization: Bearer YOUR_ADMIN_EXPORT_TOKEN" \
+  "https://your-domain.com/api/admin/submissions.csv" \
+  -o submissions.csv
+```
+
+You can also save the JSON response from a configured deployment with:
+
+```bash
+APP_BASE_URL="https://your-domain.com" ADMIN_EXPORT_TOKEN="YOUR_ADMIN_EXPORT_TOKEN" npm run export:submissions
+```
+
 ## Ethical and research limitations
 
 This project is a prototype and should be reviewed before use with real participants.

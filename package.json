@@ -12,7 +12,8 @@
     "db:dev": "prisma migrate dev",
     "db:migrate": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "validate:sample": "tsx scripts/validate-sample-export.ts"
+    "validate:sample": "tsx scripts/validate-sample-export.ts",
+    "export:submissions": "tsx scripts/export-submissions.ts"
   },
   "dependencies": {
     "next": "^14.2.23",
