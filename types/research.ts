@@ -82,6 +82,16 @@ export interface PreRevealSurveyAnswers {
   fellBehindExplanation: string;
 }
 
+export interface PostRevealSurveyAnswers {
+  lowerScoreReason: string;
+  protestLegitimacy: number;
+  ruleChangeFairness: number;
+  successAttribution: number;
+  initialJudgmentAccuracy: number;
+  viewChange: number;
+  viewChangeExplanation: string;
+}
+
 export interface ResearchSession {
   sessionId: string;
   createdAt: string;
@@ -90,4 +100,5 @@ export interface ResearchSession {
   responses: Record<string, unknown>;
   game?: HiddenCostGameState;
   preRevealSurvey?: PreRevealSurveyAnswers;
+  postRevealSurvey?: PostRevealSurveyAnswers;
 }
