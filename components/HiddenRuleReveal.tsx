@@ -52,6 +52,7 @@ export function HiddenRuleReveal() {
           Players assigned to low coverage paid the <strong className="font-semibold text-ink">full cost of treatment</strong>.
         </p>
         <p>This means two players could choose care for the same medical event while facing different financial pressure. The aim is not to evaluate whether any participant is fair, unfair, good, or bad; responses should be interpreted cautiously.</p>
+        <p>If you later choose to submit this anonymous session, the submitted data should be treated as exploratory prototype data rather than as a definitive measurement of you or anyone else.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

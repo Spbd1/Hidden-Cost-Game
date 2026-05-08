@@ -147,7 +147,7 @@ function IndividualResults({
 
       <Card className="space-y-6">
         <ExportPanel session={session} title="Research Export" />
-        <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">This is an experimental prototype. Data is stored only in this browser unless you choose to copy or download it. A production research version would need formal consent materials and secure storage.</p>
+        <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">This is an experimental prototype. Data remains in this browser unless you choose to copy, download, or explicitly submit the anonymous session when server submission is enabled.</p>
       </Card>
     </div>
   );

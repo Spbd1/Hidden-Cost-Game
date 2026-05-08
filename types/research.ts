@@ -153,10 +153,16 @@ export interface ResearchExportAssignedProfile {
   treatmentCostMultiplier: number;
 }
 
+export type ServerSubmissionStatus = "not_enabled" | "not_submitted" | "submitting" | "submitted" | "failed";
+
 export interface ResearchExport {
   exportVersion: string;
   schemaVersion: string;
   sessionId: string;
+  consentVersion: string;
+  serverSubmissionStatus: ServerSubmissionStatus;
+  serverSubmissionId?: string;
+  serverSubmittedAt?: string;
   createdAt: string;
   sessionCreatedAt: string;
   preRevealSurveyStartedAt?: string;
@@ -199,4 +205,8 @@ export interface ResearchSession {
   revealViewedAt?: string;
   postRevealSurveyStartedAt?: string;
   postRevealSurveyCompletedAt?: string;
+  serverSubmissionStatus?: ServerSubmissionStatus;
+  serverSubmissionId?: string;
+  serverSubmittedAt?: string;
+  serverSubmissionError?: string;
 }
