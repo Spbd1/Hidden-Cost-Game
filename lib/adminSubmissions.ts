@@ -20,6 +20,36 @@ export type AdminSubmissionPage = {
   nextCursor?: string;
 };
 
+export type AdminStats = {
+  totalSubmissions: number;
+  completedSubmissions: number;
+  highCoverageCount: number;
+  lowCoverageCount: number;
+  firstSubmissionAt: string | null;
+  lastSubmissionAt: string | null;
+  averageBurden: number;
+  averageCareAvoidance: number;
+  averageResponsibilityShift: number;
+  averageConstraintRecognitionShift: number;
+  averageProtestLegitimacyShift: number;
+  averageRuleCorrectionSupportShift: number;
+  averageRedistributionSupportShift: number;
+};
+
+const AVERAGE_METRIC_KEYS = [
+  "burden",
+  "careAvoidance",
+  "responsibilityShift",
+  "constraintRecognitionShift",
+  "protestLegitimacyShift",
+  "ruleCorrectionSupportShift",
+  "redistributionSupportShift",
+] as const;
+
+type AverageMetricKey = (typeof AVERAGE_METRIC_KEYS)[number];
+
+type AverageAccumulator = Record<AverageMetricKey, { sum: number; count: number }>;
+
 type CursorPayload = {
   submittedAt: string;
   id: string;
@@ -69,6 +99,65 @@ export async function listAdminSubmissions(searchParams: URLSearchParams): Promi
   };
 }
 
+export async function getAdminStats(): Promise<AdminStats> {
+  assertDatabaseConfigured();
+
+  const prisma = getPrismaClient();
+  const rows = await prisma.researchSubmission.findMany({
+    orderBy: [{ submittedAt: "asc" }, { id: "asc" }],
+    select: {
+      id: true,
+      submittedAt: true,
+      assignedHiddenProfile: true,
+      payload: true,
+    },
+  });
+
+  const averages = createAverageAccumulator();
+  let completedSubmissions = 0;
+  let highCoverageCount = 0;
+  let lowCoverageCount = 0;
+
+  for (const row of rows) {
+    const payload = row.payload;
+    const hiddenProfile = readString(row.assignedHiddenProfile) || readString(getPath(payload, ["assignedProfile", "hiddenProfile"]));
+
+    if (hiddenProfile === "High coverage") {
+      highCoverageCount += 1;
+    } else if (hiddenProfile === "Low coverage") {
+      lowCoverageCount += 1;
+    }
+
+    if (getPath(payload, ["completeness", "isComplete"]) === true) {
+      completedSubmissions += 1;
+    }
+
+    for (const key of AVERAGE_METRIC_KEYS) {
+      const value = readNumber(getPath(payload, ["computedMetrics", key]));
+      if (value !== null) {
+        averages[key].sum += value;
+        averages[key].count += 1;
+      }
+    }
+  }
+
+  return {
+    totalSubmissions: rows.length,
+    completedSubmissions,
+    highCoverageCount,
+    lowCoverageCount,
+    firstSubmissionAt: rows[0]?.submittedAt.toISOString() ?? null,
+    lastSubmissionAt: rows[rows.length - 1]?.submittedAt.toISOString() ?? null,
+    averageBurden: average(averages.burden),
+    averageCareAvoidance: average(averages.careAvoidance),
+    averageResponsibilityShift: average(averages.responsibilityShift),
+    averageConstraintRecognitionShift: average(averages.constraintRecognitionShift),
+    averageProtestLegitimacyShift: average(averages.protestLegitimacyShift),
+    averageRuleCorrectionSupportShift: average(averages.ruleCorrectionSupportShift),
+    averageRedistributionSupportShift: average(averages.redistributionSupportShift),
+  };
+}
+
 export async function listAllAdminSubmissions(): Promise<AdminSubmissionItem[]> {
   assertDatabaseConfigured();
 
@@ -85,6 +174,13 @@ function assertDatabaseConfigured() {
   if (!isDatabaseConfigured()) {
     throw new AdminSubmissionError("Database is not configured.", 500);
   }
+}
+
+export function adminStatsJson(stats: AdminStats) {
+  return {
+    ok: true,
+    ...stats,
+  };
 }
 
 export function adminSubmissionPageJson(page: AdminSubmissionPage) {
@@ -256,6 +352,33 @@ function payloadColumn(header: string, path: string[]): CsvColumn {
     header,
     read: (item) => getPath(item.payload, path),
   };
+}
+
+function createAverageAccumulator(): AverageAccumulator {
+  return AVERAGE_METRIC_KEYS.reduce((accumulator, key) => {
+    accumulator[key] = { sum: 0, count: 0 };
+    return accumulator;
+  }, {} as AverageAccumulator);
+}
+
+function average(metric: { sum: number; count: number }): number {
+  if (metric.count === 0) {
+    return 0;
+  }
+
+  return roundMetric(metric.sum / metric.count);
+}
+
+function roundMetric(value: number): number {
+  return Math.round(value * 1000) / 1000;
+}
+
+function readNumber(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readString(value: unknown): string {
+  return typeof value === "string" ? value : "";
 }
 
 function getPath(value: Prisma.JsonValue, path: string[]): unknown {

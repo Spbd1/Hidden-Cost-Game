@@ -47,8 +47,8 @@ VPS / Node server notes:
 - Start with `npm run start`.
 - Set `PORT` if needed, for example `PORT=3000 npm run start`.
 - Use a reverse proxy such as Nginx or Caddy if exposing publicly.
-- No database is required for this prototype.
-- Data is local to the user’s browser.
+- No database is required for participant-only local prototype testing.
+- Data is local to the user’s browser unless optional server submission is explicitly configured.
 
 Docker server test:
 
@@ -123,7 +123,7 @@ The prototype stores data locally in the browser. The JSON export can include:
 - Computed analytical metrics.
 - Completeness flags: `hasParticipantProfile`, `completedGame`, `completedGameRounds`, `hasPreRevealSurvey`, `hasSeenReveal`, `hasPostRevealSurvey`, and `isComplete`.
 
-No backend is configured in this prototype. Data leaves the browser only if a user copies or downloads the export and shares it elsewhere.
+Without optional server submission, data leaves the browser only if a user copies or downloads the export and shares it elsewhere. When server submission is enabled, completed exports are posted to the configured database for researcher download.
 
 ## Analytical metrics
 
@@ -145,6 +145,12 @@ The metrics are simple derived values for prototype analysis. They should not be
 ## Researcher admin export
 
 Protected admin export endpoints let a researcher retrieve server-submitted study data when `ENABLE_SERVER_SUBMISSION=true`, `DATABASE_URL`, and `ADMIN_EXPORT_TOKEN` are configured on the server. Keep `ADMIN_EXPORT_TOKEN` secret; requests must send it as a bearer token. These endpoints are intended for researcher use only and are not linked from the participant UI.
+
+### Admin dashboard
+
+The browser dashboard is available at `/admin`. It requires `ADMIN_EXPORT_TOKEN` and asks the researcher to enter the token in the browser before loading data. By default, the dashboard keeps the entered token in `sessionStorage`; the optional “Remember for this browser” checkbox stores it in `localStorage` only when explicitly selected.
+
+The dashboard shows submission counts, first/last submission timestamps, high/low coverage counts, average computed metrics, and a recent-submissions table. It also allows JSON and CSV downloads from the browser. This is intentionally not a full authentication system: use it only behind HTTPS, and put `/admin` behind reverse proxy basic auth, a VPN, or another stronger access-control layer for real deployments.
 
 JSON export example:
 
