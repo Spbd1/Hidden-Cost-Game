@@ -13,7 +13,7 @@ export const studyStages: StudyStage[] = [
     title: "Informed Consent",
     shortTitle: "Consent",
     href: "/consent",
-    summary: "Voluntary participation, local storage, and prototype expectations.",
+    summary: "Voluntary participation, local storage, incomplete information, and prototype expectations.",
   },
   {
     id: "background",
@@ -27,13 +27,13 @@ export const studyStages: StudyStage[] = [
     title: "Decision Game",
     shortTitle: "Game",
     href: "/game",
-    summary: "Five healthcare-related decisions under a hidden cost profile.",
+    summary: "Five healthcare-related decisions under an undisclosed cost profile.",
   },
   {
-    id: "results",
+    id: "visible-results",
     title: "Visible Results",
-    shortTitle: "Results",
-    href: "/results",
+    shortTitle: "Visible results",
+    href: "/visible-results",
     summary: "A score table shown before the hidden rule is explained.",
   },
   {
@@ -56,6 +56,13 @@ export const studyStages: StudyStage[] = [
     shortTitle: "Post-survey",
     href: "/post-reveal-survey",
     summary: "Follow-up interpretation after the hidden cost rule is visible.",
+  },
+  {
+    id: "individual-results",
+    title: "Individual Results",
+    shortTitle: "Individual results",
+    href: "/individual-results",
+    summary: "A summary of game outcomes, judgment shifts, computed metrics, and interpretation.",
   },
   {
     id: "export",

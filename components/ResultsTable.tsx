@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
 import { ExportPanel } from "@/components/ExportPanel";
@@ -9,6 +10,8 @@ import {
   buildParticipantInterpretation,
   calculateComputedResearchMetrics,
   calculateGameSummary,
+  isPostRevealSurveyComplete,
+  isPreRevealSurveyComplete,
 } from "@/utils/researchMetrics";
 import { getStoredSession, saveStoredSession } from "@/utils/session";
 import type { ComputedResearchMetrics, GameSummary, HiddenCostGameState, PostRevealSurveyAnswers, PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
@@ -20,32 +23,45 @@ const fictionalPlayers = [
   { name: "Player 4", score: 61 },
 ];
 
-export function ResultsTable() {
+type ResultsMode = "visible" | "individual" | "legacy";
+
+export function ResultsTable({ mode = "visible" }: { mode?: ResultsMode }) {
+  const router = useRouter();
   const [session, setSession] = useState<ResearchSession | null>(null);
 
   useEffect(() => {
-    const storedSession = getStoredSession("results");
+    const targetStage = mode === "individual" ? "individual-results" : "visible-results";
+    const storedSession = getStoredSession(targetStage);
+    const postComplete = isPostRevealSurveyComplete(storedSession.postRevealSurvey);
+
+    if (mode === "legacy") {
+      router.replace(postComplete ? "/individual-results" : "/visible-results");
+      return;
+    }
+
+    if (mode === "individual" && !postComplete) {
+      const redirectHref = storedSession.revealViewedAt ? "/post-reveal-survey" : storedSession.preRevealSurveyCompletedAt ? "/hidden-rule-reveal" : "/visible-results";
+      saveStoredSession({ ...storedSession, currentStage: storedSession.revealViewedAt ? "post-reveal" : storedSession.preRevealSurveyCompletedAt ? "reveal" : "visible-results" });
+      router.replace(redirectHref);
+      return;
+    }
+
+    if (mode === "visible" && !storedSession.game?.completedAt) {
+      saveStoredSession({ ...storedSession, currentStage: "game" });
+      router.replace("/game");
+      return;
+    }
+
     const nextSession: ResearchSession = {
       ...storedSession,
-      currentStage: "results",
+      currentStage: targetStage,
     };
 
     saveStoredSession(nextSession);
     setSession(nextSession);
-  }, []);
+  }, [mode, router]);
 
   const game = session?.game ?? null;
-  const hasCompletePostRevealSurvey = Boolean(
-    session?.postRevealSurvey &&
-      session.postRevealSurvey.lowerScoreReason &&
-      session.postRevealSurvey.protestLegitimacy > 0 &&
-      session.postRevealSurvey.ruleChangeFairness > 0 &&
-      session.postRevealSurvey.successAttribution > 0 &&
-      session.postRevealSurvey.initialJudgmentAccuracy > 0 &&
-      session.postRevealSurvey.viewChange > 0 &&
-      session.postRevealSurvey.viewChangeExplanation.trim(),
-  );
-
   const sortedPlayers = useMemo(() => {
     if (!game) {
       return [];
@@ -64,20 +80,20 @@ export function ResultsTable() {
     );
   }
 
-  if (hasCompletePostRevealSurvey && session?.preRevealSurvey && session.postRevealSurvey) {
+  if (mode === "individual" && session && isPreRevealSurveyComplete(session.preRevealSurvey) && isPostRevealSurveyComplete(session.postRevealSurvey)) {
     return <IndividualResults session={session} game={game} preRevealSurvey={session.preRevealSurvey} postRevealSurvey={session.postRevealSurvey} />;
   }
 
   return (
     <Card className="space-y-6">
       <p className="rounded-2xl bg-slate-50 p-5 leading-7 text-slate-700">
-        At this stage, you can see only the visible score table. Some rules have not been disclosed yet. Please answer the following questions based only on what you have seen so far.
+        At this stage, you can see only the visible score table. Hidden profiles, metrics, and post-reveal interpretation are intentionally not shown yet. Please continue to the pre-reveal survey and answer based only on what you have seen so far.
       </p>
 
       <ResultsRankingTable players={sortedPlayers} />
 
       <div className="flex justify-end border-t border-slate-200 pt-6">
-        <ButtonLink href="/pre-reveal-survey">Continue to questions</ButtonLink>
+        <ButtonLink href="/pre-reveal-survey">Continue to pre-reveal survey</ButtonLink>
       </div>
     </Card>
   );
@@ -103,11 +119,8 @@ function IndividualResults({
       <Card className="space-y-6">
         <div className="rounded-2xl bg-research-50 p-5 leading-7 text-research-900">
           <h2 className="text-2xl font-semibold text-ink">Your individual results</h2>
-          <p className="mt-3">
-            Your post-reveal answers have been saved. This page summarizes your game outcomes, compares pre- and post-reveal ratings, and prepares a structured JSON export.
-          </p>
+          <p className="mt-3">Your post-reveal answers have been saved. This page summarizes your game outcomes, compares pre- and post-reveal ratings, and prepares a structured JSON export.</p>
         </div>
-
         <GameSummarySection summary={gameSummary} />
       </Card>
 
@@ -134,9 +147,7 @@ function IndividualResults({
 
       <Card className="space-y-6">
         <ExportPanel session={session} title="Research Export" />
-        <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">
-          This is an experimental prototype. Data is stored only in this browser unless you choose to copy or download it. A production research version would need formal consent materials and secure storage.
-        </p>
+        <p className="rounded-2xl bg-amber-50 p-4 text-sm leading-6 text-amber-900">This is an experimental prototype. Data is stored only in this browser unless you choose to copy or download it. A production research version would need formal consent materials and secure storage.</p>
       </Card>
     </div>
   );
@@ -163,36 +174,14 @@ function GameSummarySection({ summary }: { summary: GameSummary }) {
 
 function JudgmentChangeTable({ preRevealSurvey, postRevealSurvey }: { preRevealSurvey: PreRevealSurveyAnswers; postRevealSurvey: PostRevealSurveyAnswers }) {
   const rows = [
-    {
-      label: "Explanation for why some players fell behind",
-      before: preRevealSurvey.fellBehindExplanation,
-      after: postRevealSurvey.viewChangeExplanation,
-    },
-    {
-      label: "Selected explanation for score differences",
-      before: preRevealSurvey.lowerScoreReason,
-      after: postRevealSurvey.lowerScoreReason,
-    },
-    {
-      label: "Protest legitimacy",
-      before: rating(preRevealSurvey.protestLegitimacy),
-      after: rating(postRevealSurvey.protestLegitimacy),
-    },
-    {
-      label: "Support for rule correction",
-      before: rating(preRevealSurvey.ruleChangeFairness),
-      after: rating(postRevealSurvey.ruleChangeFairness),
-    },
-    {
-      label: "Individual-vs-system attribution",
-      before: rating(preRevealSurvey.successAttribution, "1 = individual choices, 5 = game conditions"),
-      after: rating(postRevealSurvey.successAttribution, "1 = individual choices, 5 = game conditions"),
-    },
-    {
-      label: "Confidence in judgment / later accuracy rating",
-      before: rating(preRevealSurvey.judgmentConfidence, "confidence before reveal"),
-      after: rating(postRevealSurvey.initialJudgmentAccuracy, "post-reveal rating of initial accuracy"),
-    },
+    { label: "Open explanation / revision", before: preRevealSurvey.openExplanation, after: postRevealSurvey.openRevision },
+    { label: "Primary attribution category", before: preRevealSurvey.primaryAttribution, after: postRevealSurvey.revisedPrimaryAttribution },
+    { label: "Individual responsibility", before: rating(preRevealSurvey.individualResponsibility), after: rating(postRevealSurvey.revisedIndividualResponsibility) },
+    { label: "Constraint suspicion / structural impact", before: rating(preRevealSurvey.constraintSuspicion), after: rating(postRevealSurvey.perceivedStructuralImpact) },
+    { label: "Protest legitimacy", before: rating(preRevealSurvey.protestLegitimacy), after: rating(postRevealSurvey.postProtestLegitimacy) },
+    { label: "Support for rule correction", before: rating(preRevealSurvey.ruleCorrectionSupport), after: rating(postRevealSurvey.postRuleCorrectionSupport) },
+    { label: "Support for point redistribution", before: rating(preRevealSurvey.redistributionSupport), after: rating(postRevealSurvey.postRedistributionSupport) },
+    { label: "Confidence / initial judgment accuracy", before: rating(preRevealSurvey.confidence, "confidence before reveal"), after: rating(postRevealSurvey.initialJudgmentAccuracy, "post-reveal rating of initial accuracy") },
   ];
 
   return (
@@ -221,16 +210,17 @@ function JudgmentChangeTable({ preRevealSurvey, postRevealSurvey }: { preRevealS
 
 function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
   const rows = [
-    ["Individual Attribution Score (pre)", metrics.individualAttributionPre],
-    ["Individual Attribution Score (post)", metrics.individualAttributionPost],
-    ["Systemic Attribution Score (pre)", metrics.systemicAttributionPre],
-    ["Systemic Attribution Score (post)", metrics.systemicAttributionPost],
-    ["Protest Legitimacy Shift", metrics.protestShift],
-    ["Fairness Support Shift", metrics.fairnessShift],
-    ["Empathy / Perspective Shift", metrics.empathyShift],
+    ["Responsibility Shift", metrics.responsibilityShift],
+    ["Constraint Recognition Shift", metrics.constraintRecognitionShift],
+    ["Protest Legitimacy Shift", metrics.protestLegitimacyShift],
+    ["Rule Correction Support Shift", metrics.ruleCorrectionSupportShift],
+    ["Redistribution Support Shift", metrics.redistributionSupportShift],
     ["Certainty Correction", metrics.certaintyCorrection],
+    ["Information Caution", metrics.informationCaution],
+    ["Perspective Change", metrics.perspectiveChange],
     ["Cost burden ratio", metrics.burden],
     ["Care avoidance index", metrics.careAvoidance],
+    ["Attribution category shift", `${metrics.attributionCategoryShift.pre} → ${metrics.attributionCategoryShift.post}`],
   ] as const;
 
   return (
@@ -238,7 +228,7 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
       {rows.map(([label, value]) => (
         <div key={label} className="rounded-2xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-medium text-slate-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold text-ink">{formatMetric(value)}</p>
+          <p className="mt-2 text-xl font-semibold text-ink">{typeof value === "number" ? formatMetric(value) : value}</p>
         </div>
       ))}
     </div>
@@ -289,7 +279,7 @@ function ResultCard({ label, value }: { label: string; value: string }) {
 }
 
 function rating(value: number, context?: string): string {
-  return context ? `${value} (${context})` : `${value} / 5`;
+  return context ? `${value} / 7 (${context})` : `${value} / 7`;
 }
 
 function formatMetric(value: number): string {

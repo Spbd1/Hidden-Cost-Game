@@ -8,21 +8,24 @@ import { HelperNote, LikertQuestion, PrimaryButton, SingleChoiceQuestion, TextQu
 import { getStoredSession, saveStoredSession } from "@/utils/session";
 import type { PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
-const lowerScoreReasonOptions = [
-  "Their choices during the game",
-  "Differences in effort or strategy",
-  "Differences in risk exposure",
-  "Different conditions that may not be visible",
-  "I don’t know",
+const primaryAttributionOptions = [
+  "They made less effective decisions during the game",
+  "They accepted too much risk",
+  "They may have faced constraints that are not visible in the results table",
+  "Random variation or luck may have played a role",
+  "I do not have enough information to judge",
 ];
 
 const initialAnswers: PreRevealSurveyAnswers = {
-  lowerScoreReason: "",
+  primaryAttribution: "",
+  individualResponsibility: 0,
+  constraintSuspicion: 0,
   protestLegitimacy: 0,
-  ruleChangeFairness: 0,
-  successAttribution: 0,
-  judgmentConfidence: 0,
-  fellBehindExplanation: "",
+  ruleCorrectionSupport: 0,
+  redistributionSupport: 0,
+  confidence: 0,
+  informationSufficiency: 0,
+  openExplanation: "",
 };
 
 export function PreRevealSurveyForm() {
@@ -33,15 +36,25 @@ export function PreRevealSurveyForm() {
 
   useEffect(() => {
     const storedSession = getStoredSession("pre-reveal");
+
+    if (!storedSession.game?.completedAt) {
+      const gameSession: ResearchSession = { ...storedSession, currentStage: "game" };
+      saveStoredSession(gameSession);
+      router.replace("/game");
+      return;
+    }
+
+    const now = new Date().toISOString();
     const nextSession: ResearchSession = {
       ...storedSession,
       currentStage: "pre-reveal",
+      preRevealSurveyStartedAt: storedSession.preRevealSurveyStartedAt ?? now,
     };
 
     saveStoredSession(nextSession);
     setSession(nextSession);
     setAnswers(nextSession.preRevealSurvey ?? initialAnswers);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!session) {
@@ -53,13 +66,18 @@ export function PreRevealSurveyForm() {
     setSession(updatedSession);
   }, [answers]);
 
+  const openLength = answers.openExplanation.trim().length;
   const isComplete =
-    answers.lowerScoreReason.length > 0 &&
+    answers.primaryAttribution.length > 0 &&
+    answers.individualResponsibility > 0 &&
+    answers.constraintSuspicion > 0 &&
     answers.protestLegitimacy > 0 &&
-    answers.ruleChangeFairness > 0 &&
-    answers.successAttribution > 0 &&
-    answers.judgmentConfidence > 0 &&
-    answers.fellBehindExplanation.trim().length > 0;
+    answers.ruleCorrectionSupport > 0 &&
+    answers.redistributionSupport > 0 &&
+    answers.confidence > 0 &&
+    answers.informationSufficiency > 0 &&
+    openLength >= 10 &&
+    openLength <= 500;
 
   function updateAnswer<Key extends keyof PreRevealSurveyAnswers>(key: Key, value: PreRevealSurveyAnswers[Key]) {
     setAnswers((currentAnswers) => ({
@@ -79,9 +97,10 @@ export function PreRevealSurveyForm() {
     const updatedSession: ResearchSession = {
       ...session,
       currentStage: "reveal",
+      preRevealSurveyCompletedAt: new Date().toISOString(),
       preRevealSurvey: {
         ...answers,
-        fellBehindExplanation: answers.fellBehindExplanation.trim(),
+        openExplanation: answers.openExplanation.trim(),
       },
     };
 
@@ -92,55 +111,27 @@ export function PreRevealSurveyForm() {
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-8">
-        <HelperNote tone="neutral">Please answer based only on the information visible so far. There are no right or wrong answers.</HelperNote>
+        <HelperNote tone="neutral">Please answer based only on the visible score table. Some information may not yet be available, and there are no right or wrong answers.</HelperNote>
 
         <SingleChoiceQuestion
-          legend="1. What seems most likely to explain why some players ended with lower scores?"
-          name="lowerScoreReason"
-          options={lowerScoreReasonOptions}
-          value={answers.lowerScoreReason}
-          onChange={(value) => updateAnswer("lowerScoreReason", value)}
+          legend="1. Based only on the results shown so far, what do you think most likely explains why some players ended with lower scores?"
+          name="primaryAttribution"
+          options={primaryAttributionOptions}
+          value={answers.primaryAttribution}
+          onChange={(value) => updateAnswer("primaryAttribution", value)}
         />
 
-        <LikertQuestion
-          name="protestLegitimacy"
-          legend="2. If lower-scoring players objected to the game results, how legitimate would that objection seem?"
-          leftLabel="Not legitimate at all"
-          rightLabel="Completely legitimate"
-          value={answers.protestLegitimacy}
-          onChange={(value) => updateAnswer("protestLegitimacy", value)}
-        />
+        <LikertQuestion name="individualResponsibility" legend="2. How responsible do you think lower-scoring players were for their final scores?" leftLabel="Not responsible at all" rightLabel="Fully responsible" value={answers.individualResponsibility} onChange={(value) => updateAnswer("individualResponsibility", value)} />
+        <LikertQuestion name="constraintSuspicion" legend="3. How likely do you think it is that players faced different constraints during the game?" leftLabel="Very unlikely" rightLabel="Very likely" value={answers.constraintSuspicion} onChange={(value) => updateAnswer("constraintSuspicion", value)} />
+        <LikertQuestion name="protestLegitimacy" legend="4. If lower-scoring players objected to the outcome, how legitimate would their objection seem?" leftLabel="Not legitimate at all" rightLabel="Completely legitimate" value={answers.protestLegitimacy} onChange={(value) => updateAnswer("protestLegitimacy", value)} />
+        <LikertQuestion name="ruleCorrectionSupport" legend="5. Would it be fair to adjust the rules or scoring system if some players were disadvantaged by hidden constraints?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.ruleCorrectionSupport} onChange={(value) => updateAnswer("ruleCorrectionSupport", value)} />
+        <LikertQuestion name="redistributionSupport" legend="6. Would it be fair to transfer some points from higher-scoring players to lower-scoring players if hidden disadvantage were later confirmed?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.redistributionSupport} onChange={(value) => updateAnswer("redistributionSupport", value)} />
+        <LikertQuestion name="confidence" legend="7. How confident are you in your interpretation of the score differences?" leftLabel="Not confident at all" rightLabel="Completely confident" value={answers.confidence} onChange={(value) => updateAnswer("confidence", value)} />
+        <LikertQuestion name="informationSufficiency" legend="8. How much information do you feel you currently have to judge why players ended with different scores?" leftLabel="Very little information" rightLabel="Enough information" value={answers.informationSufficiency} onChange={(value) => updateAnswer("informationSufficiency", value)} />
 
-        <LikertQuestion
-          name="ruleChangeFairness"
-          legend="3. Would it seem fair to adjust the rules to support lower-scoring players?"
-          leftLabel="Strongly disagree"
-          rightLabel="Strongly agree"
-          value={answers.ruleChangeFairness}
-          onChange={(value) => updateAnswer("ruleChangeFairness", value)}
-        />
+        <TextQuestion label="9. In one or two sentences, explain why you think some players fell behind." value={answers.openExplanation} onChange={(value) => updateAnswer("openExplanation", value)} minLength={10} maxLength={500} />
 
-        <LikertQuestion
-          name="successAttribution"
-          legend="4. In this game, was success mostly due to individual choices or game conditions?"
-          leftLabel="Entirely individual choices"
-          rightLabel="Entirely game conditions"
-          value={answers.successAttribution}
-          onChange={(value) => updateAnswer("successAttribution", value)}
-        />
-
-        <LikertQuestion
-          name="judgmentConfidence"
-          legend="5. How confident are you in your interpretation of the score differences?"
-          leftLabel="Not confident at all"
-          rightLabel="Completely confident"
-          value={answers.judgmentConfidence}
-          onChange={(value) => updateAnswer("judgmentConfidence", value)}
-        />
-
-        <TextQuestion label="6. In one sentence, describe why some players may have fallen behind." value={answers.fellBehindExplanation} onChange={(value) => updateAnswer("fellBehindExplanation", value)} />
-
-        {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all questions before continuing. Your draft has been saved in this browser.</HelperNote> : null}
+        {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all closed-ended items and write 10–500 characters in the explanation. Your draft has been saved in this browser.</HelperNote> : null}
 
         <div className="flex justify-end border-t border-slate-200 pt-6">
           <PrimaryButton>Continue to reveal</PrimaryButton>

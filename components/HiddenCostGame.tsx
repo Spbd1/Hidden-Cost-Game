@@ -44,11 +44,11 @@ export function HiddenCostGame() {
     if (storedSession.game?.completedAt) {
       const completedSession: ResearchSession = {
         ...storedSession,
-        currentStage: "results",
+        currentStage: "visible-results",
       };
 
       saveStoredSession(completedSession);
-      router.replace("/results");
+      router.replace("/visible-results");
       return;
     }
 
@@ -124,7 +124,7 @@ export function HiddenCostGame() {
     };
     const updatedSession: ResearchSession = {
       ...session,
-      currentStage: isComplete ? "results" : "game",
+      currentStage: isComplete ? "visible-results" : "game",
       game: updatedGame,
     };
 
@@ -133,7 +133,7 @@ export function HiddenCostGame() {
     setGame(updatedGame);
 
     if (isComplete) {
-      router.push("/results");
+      router.push("/visible-results");
       return;
     }
 

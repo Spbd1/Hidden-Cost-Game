@@ -8,22 +8,24 @@ import { HelperNote, LikertQuestion, PrimaryButton, SingleChoiceQuestion, TextQu
 import { getStoredSession, saveStoredSession } from "@/utils/session";
 import type { PostRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
-const lowerScoreReasonOptions = [
-  "Their choices during the game",
-  "Differences in effort or strategy",
-  "Differences in risk exposure",
-  "Different cost conditions",
-  "I don’t know",
+const revisedPrimaryAttributionOptions = [
+  "Their decisions still seem to be the main explanation",
+  "Hidden cost conditions seem to be the main explanation",
+  "Both decisions and hidden cost conditions mattered",
+  "Random variation or luck may also have mattered",
+  "I am still unsure",
 ];
 
 const initialAnswers: PostRevealSurveyAnswers = {
-  lowerScoreReason: "",
-  protestLegitimacy: 0,
-  ruleChangeFairness: 0,
-  successAttribution: 0,
+  revisedPrimaryAttribution: "",
+  revisedIndividualResponsibility: 0,
+  perceivedStructuralImpact: 0,
+  postProtestLegitimacy: 0,
+  postRuleCorrectionSupport: 0,
+  postRedistributionSupport: 0,
   initialJudgmentAccuracy: 0,
-  viewChange: 0,
-  viewChangeExplanation: "",
+  perspectiveChange: 0,
+  openRevision: "",
 };
 
 export function PostRevealSurveyForm() {
@@ -34,15 +36,28 @@ export function PostRevealSurveyForm() {
 
   useEffect(() => {
     const storedSession = getStoredSession("post-reveal");
+
+    if (!storedSession.revealViewedAt) {
+      const redirectSession: ResearchSession = {
+        ...storedSession,
+        currentStage: storedSession.preRevealSurveyCompletedAt ? "reveal" : "pre-reveal",
+      };
+      saveStoredSession(redirectSession);
+      router.replace(storedSession.preRevealSurveyCompletedAt ? "/hidden-rule-reveal" : "/pre-reveal-survey");
+      return;
+    }
+
+    const now = new Date().toISOString();
     const nextSession: ResearchSession = {
       ...storedSession,
       currentStage: "post-reveal",
+      postRevealSurveyStartedAt: storedSession.postRevealSurveyStartedAt ?? now,
     };
 
     saveStoredSession(nextSession);
     setSession(nextSession);
     setAnswers(nextSession.postRevealSurvey ?? initialAnswers);
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!session) {
@@ -54,14 +69,18 @@ export function PostRevealSurveyForm() {
     setSession(updatedSession);
   }, [answers]);
 
+  const openLength = answers.openRevision.trim().length;
   const isComplete =
-    answers.lowerScoreReason.length > 0 &&
-    answers.protestLegitimacy > 0 &&
-    answers.ruleChangeFairness > 0 &&
-    answers.successAttribution > 0 &&
+    answers.revisedPrimaryAttribution.length > 0 &&
+    answers.revisedIndividualResponsibility > 0 &&
+    answers.perceivedStructuralImpact > 0 &&
+    answers.postProtestLegitimacy > 0 &&
+    answers.postRuleCorrectionSupport > 0 &&
+    answers.postRedistributionSupport > 0 &&
     answers.initialJudgmentAccuracy > 0 &&
-    answers.viewChange > 0 &&
-    answers.viewChangeExplanation.trim().length > 0;
+    answers.perspectiveChange > 0 &&
+    openLength >= 10 &&
+    openLength <= 500;
 
   function updateAnswer<Key extends keyof PostRevealSurveyAnswers>(key: Key, value: PostRevealSurveyAnswers[Key]) {
     setAnswers((currentAnswers) => ({
@@ -80,78 +99,42 @@ export function PostRevealSurveyForm() {
 
     const updatedSession: ResearchSession = {
       ...session,
-      currentStage: "results",
+      currentStage: "individual-results",
+      postRevealSurveyCompletedAt: new Date().toISOString(),
       postRevealSurvey: {
         ...answers,
-        viewChangeExplanation: answers.viewChangeExplanation.trim(),
+        openRevision: answers.openRevision.trim(),
       },
     };
 
     saveStoredSession(updatedSession);
-    router.push("/results");
+    router.push("/individual-results");
   }
 
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-8">
-        <HelperNote tone="neutral">Please answer after considering the cost rule that was just disclosed. These responses describe interpretations, not personal worth or ability.</HelperNote>
+        <HelperNote tone="neutral">Please answer after considering the cost rule that was just disclosed. These responses describe interpretations, not personal worth, fairness, or character.</HelperNote>
 
         <SingleChoiceQuestion
-          legend="1. After the reveal, what seems most likely to explain why some players ended with lower scores?"
-          name="postLowerScoreReason"
-          options={lowerScoreReasonOptions}
-          value={answers.lowerScoreReason}
-          onChange={(value) => updateAnswer("lowerScoreReason", value)}
+          legend="1. After learning that players faced different cost conditions, what do you now think best explains why some players ended with lower scores?"
+          name="revisedPrimaryAttribution"
+          options={revisedPrimaryAttributionOptions}
+          value={answers.revisedPrimaryAttribution}
+          onChange={(value) => updateAnswer("revisedPrimaryAttribution", value)}
         />
 
-        <LikertQuestion
-          name="postProtestLegitimacy"
-          legend="2. After the reveal, if lower-scoring players objected to the game results, how legitimate would that objection seem?"
-          leftLabel="Not legitimate at all"
-          rightLabel="Completely legitimate"
-          value={answers.protestLegitimacy}
-          onChange={(value) => updateAnswer("protestLegitimacy", value)}
-        />
+        <LikertQuestion name="revisedIndividualResponsibility" legend="2. After the reveal, how responsible do you think lower-scoring players were for their final scores?" leftLabel="Not responsible at all" rightLabel="Fully responsible" value={answers.revisedIndividualResponsibility} onChange={(value) => updateAnswer("revisedIndividualResponsibility", value)} />
+        <LikertQuestion name="perceivedStructuralImpact" legend="3. How much do you think the hidden cost difference affected the final scores?" leftLabel="Not at all" rightLabel="A great deal" value={answers.perceivedStructuralImpact} onChange={(value) => updateAnswer("perceivedStructuralImpact", value)} />
+        <LikertQuestion name="postProtestLegitimacy" legend="4. After the reveal, if lower-scoring players objected to the outcome, how legitimate would their objection seem?" leftLabel="Not legitimate at all" rightLabel="Completely legitimate" value={answers.postProtestLegitimacy} onChange={(value) => updateAnswer("postProtestLegitimacy", value)} />
+        <LikertQuestion name="postRuleCorrectionSupport" legend="5. After the reveal, would it be fair to adjust the rules or scoring system to account for the hidden cost difference?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.postRuleCorrectionSupport} onChange={(value) => updateAnswer("postRuleCorrectionSupport", value)} />
+        <LikertQuestion name="postRedistributionSupport" legend="6. After the reveal, would it be fair to transfer some points from higher-scoring players to lower-scoring players?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.postRedistributionSupport} onChange={(value) => updateAnswer("postRedistributionSupport", value)} />
+        <LikertQuestion name="initialJudgmentAccuracy" legend="7. Looking back, how accurate does your initial interpretation seem now?" leftLabel="Not accurate at all" rightLabel="Very accurate" value={answers.initialJudgmentAccuracy} onChange={(value) => updateAnswer("initialJudgmentAccuracy", value)} />
+        <LikertQuestion name="perspectiveChange" legend="8. How much did the reveal change how you view the lower-scoring players?" leftLabel="Did not change at all" rightLabel="Changed a lot" value={answers.perspectiveChange} onChange={(value) => updateAnswer("perspectiveChange", value)} />
 
-        <LikertQuestion
-          name="postRuleChangeFairness"
-          legend="3. After the reveal, would it seem fair to adjust the rules to support lower-scoring players?"
-          leftLabel="Strongly disagree"
-          rightLabel="Strongly agree"
-          value={answers.ruleChangeFairness}
-          onChange={(value) => updateAnswer("ruleChangeFairness", value)}
-        />
+        <TextQuestion label="9. In one or two sentences, describe how the reveal changed, confirmed, or complicated your interpretation." value={answers.openRevision} onChange={(value) => updateAnswer("openRevision", value)} minLength={10} maxLength={500} />
 
-        <LikertQuestion
-          name="postSuccessAttribution"
-          legend="4. After the reveal, was success mostly due to individual choices or game conditions?"
-          leftLabel="Entirely individual choices"
-          rightLabel="Entirely game conditions"
-          value={answers.successAttribution}
-          onChange={(value) => updateAnswer("successAttribution", value)}
-        />
-
-        <LikertQuestion
-          name="initialJudgmentAccuracy"
-          legend="5. How accurate does your initial interpretation now seem?"
-          leftLabel="Not accurate at all"
-          rightLabel="Very accurate"
-          value={answers.initialJudgmentAccuracy}
-          onChange={(value) => updateAnswer("initialJudgmentAccuracy", value)}
-        />
-
-        <LikertQuestion
-          name="viewChange"
-          legend="6. How much did learning about unequal cost conditions change your view of lower-scoring players?"
-          leftLabel="Did not change at all"
-          rightLabel="Changed a lot"
-          value={answers.viewChange}
-          onChange={(value) => updateAnswer("viewChange", value)}
-        />
-
-        <TextQuestion label="7. In one sentence, describe how the reveal affected your interpretation." value={answers.viewChangeExplanation} onChange={(value) => updateAnswer("viewChangeExplanation", value)} />
-
-        {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all questions before continuing. Your draft has been saved in this browser.</HelperNote> : null}
+        {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all closed-ended items and write 10–500 characters in the revision. Your draft has been saved in this browser.</HelperNote> : null}
 
         <div className="flex justify-end border-t border-slate-200 pt-6">
           <PrimaryButton>Continue to individual results</PrimaryButton>
