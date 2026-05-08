@@ -1,25 +1,36 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
 import { hiddenCostProfiles } from "@/utils/game";
+import { isPreRevealSurveyComplete } from "@/utils/researchMetrics";
 import { getStoredSession, saveStoredSession } from "@/utils/session";
 import type { HiddenCostGameState, ResearchSession } from "@/types/research";
 
 export function HiddenRuleReveal() {
+  const router = useRouter();
   const [game, setGame] = useState<HiddenCostGameState | null>(null);
 
   useEffect(() => {
     const storedSession = getStoredSession("reveal");
+
+    if (!isPreRevealSurveyComplete(storedSession.preRevealSurvey)) {
+      saveStoredSession({ ...storedSession, currentStage: storedSession.game?.completedAt ? "pre-reveal" : "game" });
+      router.replace(storedSession.game?.completedAt ? "/pre-reveal-survey" : "/game");
+      return;
+    }
+
     const nextSession: ResearchSession = {
       ...storedSession,
       currentStage: "reveal",
+      revealViewedAt: storedSession.revealViewedAt ?? new Date().toISOString(),
     };
 
     saveStoredSession(nextSession);
     setGame(nextSession.game ?? null);
-  }, []);
+  }, [router]);
 
   if (!game) {
     return (
@@ -34,13 +45,13 @@ export function HiddenRuleReveal() {
   return (
     <Card className="space-y-8">
       <div className="space-y-5 rounded-3xl bg-slate-50 p-6 text-lg leading-8 text-slate-700">
-        <p>Until now, the visible results did not show whether all players faced the same cost conditions. In this simulation, treatment costs were not the same for everyone.</p>
+        <p>The hidden rule was used to study judgment under incomplete information. Until now, the visible results did not show whether all players faced the same cost conditions.</p>
         <p>
           Players assigned to high coverage paid about <strong className="font-semibold text-ink">30% of treatment costs</strong>.
           <br />
           Players assigned to low coverage paid the <strong className="font-semibold text-ink">full cost of treatment</strong>.
         </p>
-        <p>This means two players could choose care for the same medical event while facing different financial pressure.</p>
+        <p>This means two players could choose care for the same medical event while facing different financial pressure. The aim is not to evaluate whether any participant is fair, unfair, good, or bad; responses should be interpreted cautiously.</p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">

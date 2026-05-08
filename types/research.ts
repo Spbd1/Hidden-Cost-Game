@@ -3,10 +3,11 @@ export type StageId =
   | "consent"
   | "background"
   | "game"
+  | "visible-results"
   | "pre-reveal"
   | "reveal"
   | "post-reveal"
-  | "results"
+  | "individual-results"
   | "export";
 
 export interface StudyStage {
@@ -28,6 +29,8 @@ export interface ParticipantProfile {
   specialOrganizationalCoverage: string;
   inequalityOrientation: number | null;
   institutionalTrust: number | null;
+  priorExposureToUnequalSystems?: string;
+  policyPreferenceBaseline?: number | PreferNotToAnswer | null;
 }
 
 export interface ParticipantBackground {
@@ -86,25 +89,29 @@ export interface HiddenCostGameState {
   rounds: GameRoundData[];
 }
 
-export interface PreRevealSurveyAnswers {
-  lowerScoreReason: string;
+export type PreRevealSurveyAnswers = {
+  primaryAttribution: string;
+  individualResponsibility: number;
+  constraintSuspicion: number;
   protestLegitimacy: number;
-  ruleChangeFairness: number;
-  successAttribution: number;
-  judgmentConfidence: number;
-  fellBehindExplanation: string;
-}
+  ruleCorrectionSupport: number;
+  redistributionSupport: number;
+  confidence: number;
+  informationSufficiency: number;
+  openExplanation: string;
+};
 
-export interface PostRevealSurveyAnswers {
-  lowerScoreReason: string;
-  protestLegitimacy: number;
-  ruleChangeFairness: number;
-  successAttribution: number;
+export type PostRevealSurveyAnswers = {
+  revisedPrimaryAttribution: string;
+  revisedIndividualResponsibility: number;
+  perceivedStructuralImpact: number;
+  postProtestLegitimacy: number;
+  postRuleCorrectionSupport: number;
+  postRedistributionSupport: number;
   initialJudgmentAccuracy: number;
-  viewChange: number;
-  viewChangeExplanation: string;
-}
-
+  perspectiveChange: number;
+  openRevision: string;
+};
 
 export interface TreatmentChoiceCounts {
   fullTreatmentChoices: number;
@@ -121,17 +128,23 @@ export interface GameSummary extends TreatmentChoiceCounts {
   totalIncome: number;
 }
 
+export interface AttributionCategoryShift {
+  pre: string;
+  post: string;
+}
+
 export interface ComputedResearchMetrics {
-  individualAttributionPre: number;
-  individualAttributionPost: number;
-  systemicAttributionPre: number;
-  systemicAttributionPost: number;
-  protestShift: number;
-  fairnessShift: number;
-  empathyShift: number;
+  responsibilityShift: number;
+  constraintRecognitionShift: number;
+  protestLegitimacyShift: number;
+  ruleCorrectionSupportShift: number;
+  redistributionSupportShift: number;
   certaintyCorrection: number;
+  informationCaution: number;
+  perspectiveChange: number;
   burden: number;
   careAvoidance: number;
+  attributionCategoryShift: AttributionCategoryShift;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -142,9 +155,15 @@ export interface ResearchExportAssignedProfile {
 
 export interface ResearchExport {
   exportVersion: string;
+  schemaVersion: string;
   sessionId: string;
   createdAt: string;
   sessionCreatedAt: string;
+  preRevealSurveyStartedAt?: string;
+  preRevealSurveyCompletedAt?: string;
+  revealViewedAt?: string;
+  postRevealSurveyStartedAt?: string;
+  postRevealSurveyCompletedAt?: string;
   participantProfile?: ParticipantProfile;
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
@@ -157,8 +176,10 @@ export interface ResearchExport {
 
 export interface ResearchExportCompleteness {
   hasParticipantProfile: boolean;
+  completedGame: boolean;
   completedGameRounds: number;
   hasPreRevealSurvey: boolean;
+  hasSeenReveal: boolean;
   hasPostRevealSurvey: boolean;
   isComplete: boolean;
 }
@@ -173,4 +194,9 @@ export interface ResearchSession {
   game?: HiddenCostGameState;
   preRevealSurvey?: PreRevealSurveyAnswers;
   postRevealSurvey?: PostRevealSurveyAnswers;
+  preRevealSurveyStartedAt?: string;
+  preRevealSurveyCompletedAt?: string;
+  revealViewedAt?: string;
+  postRevealSurveyStartedAt?: string;
+  postRevealSurveyCompletedAt?: string;
 }

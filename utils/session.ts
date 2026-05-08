@@ -60,12 +60,25 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
   return {
     sessionId: typeof candidate.sessionId === "string" ? candidate.sessionId : `hcg-${crypto.randomUUID()}`,
     createdAt: typeof candidate.createdAt === "string" ? candidate.createdAt : new Date().toISOString(),
-    currentStage: candidate.currentStage ?? currentStage,
+    currentStage: normalizeStageId(candidate.currentStage, currentStage),
     background: candidate.background ?? {},
     participantProfile: candidate.participantProfile,
     responses: candidate.responses ?? {},
     game: candidate.game,
     preRevealSurvey: candidate.preRevealSurvey,
     postRevealSurvey: candidate.postRevealSurvey,
+    preRevealSurveyStartedAt: candidate.preRevealSurveyStartedAt,
+    preRevealSurveyCompletedAt: candidate.preRevealSurveyCompletedAt,
+    revealViewedAt: candidate.revealViewedAt,
+    postRevealSurveyStartedAt: candidate.postRevealSurveyStartedAt,
+    postRevealSurveyCompletedAt: candidate.postRevealSurveyCompletedAt,
   };
+}
+
+function normalizeStageId(value: unknown, fallback: StageId): StageId {
+  if (value === "results") {
+    return fallback;
+  }
+
+  return typeof value === "string" ? (value as StageId) : fallback;
 }

@@ -15,6 +15,7 @@ const genderOptions = ["Woman", "Man", "Non-binary / another description", prefe
 const medicalCostPressureOptions = ["Yes, several times", "Yes, once or twice", "No", "Not sure", preferNotToAnswer];
 const healthcareCoverageOptions = ["Public or general insurance", "Private or supplementary insurance", "Special organizational coverage", "No insurance", "I don’t know", preferNotToAnswer];
 const specialOrganizationalCoverageOptions = ["Yes", "No", "I don’t know", preferNotToAnswer];
+const priorExposureToUnequalSystemsOptions = ["Yes, personally experienced", "Yes, closely observed", "No", "Not sure", preferNotToAnswer];
 
 const initialProfile: ParticipantProfile = {
   ageGroup: "",
@@ -25,6 +26,8 @@ const initialProfile: ParticipantProfile = {
   specialOrganizationalCoverage: "",
   inequalityOrientation: null,
   institutionalTrust: null,
+  priorExposureToUnequalSystems: "",
+  policyPreferenceBaseline: null,
 };
 
 export function ParticipantBackgroundForm() {
@@ -150,6 +153,23 @@ export function ParticipantBackgroundForm() {
           rightLabel="Trust completely"
           value={profile.institutionalTrust}
           onChange={(value) => updateProfile("institutionalTrust", value)}
+        />
+
+        <SingleChoiceQuestion
+          legend="9. Optional: Have you personally experienced or closely observed a situation where two groups faced different rules or costs within the same system?"
+          name="priorExposureToUnequalSystems"
+          options={priorExposureToUnequalSystemsOptions}
+          value={profile.priorExposureToUnequalSystems ?? ""}
+          onChange={(value) => updateProfile("priorExposureToUnequalSystems", value)}
+        />
+
+        <LikertWithPreferNot
+          name="policyPreferenceBaseline"
+          legend="10. Optional: Before starting the game, how much do you generally support correcting outcomes when unequal starting conditions are shown?"
+          leftLabel="Do not support"
+          rightLabel="Strongly support"
+          value={profile.policyPreferenceBaseline ?? null}
+          onChange={(value) => updateProfile("policyPreferenceBaseline", value)}
         />
 
         {showValidation && !isComplete ? <HelperNote tone="warning">Please answer each background question before continuing. Use “Prefer not to answer” where available if you would rather not answer.</HelperNote> : null}

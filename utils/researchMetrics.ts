@@ -12,13 +12,48 @@ import type {
   TreatmentChoiceCounts,
 } from "@/types/research";
 
-export const RESEARCH_EXPORT_VERSION = "prototype-1.0";
+export const RESEARCH_EXPORT_VERSION = "prototype-1.1";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-2";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
   "full-treatment": "fullTreatmentChoices",
   "partial-treatment": "partialTreatmentChoices",
   "skip-treatment": "skippedTreatmentChoices",
 };
+
+export function isPreRevealSurveyComplete(survey: PreRevealSurveyAnswers | undefined): survey is PreRevealSurveyAnswers {
+  const openLength = survey?.openExplanation.trim().length ?? 0;
+
+  return Boolean(
+    survey?.primaryAttribution &&
+      survey.individualResponsibility > 0 &&
+      survey.constraintSuspicion > 0 &&
+      survey.protestLegitimacy > 0 &&
+      survey.ruleCorrectionSupport > 0 &&
+      survey.redistributionSupport > 0 &&
+      survey.confidence > 0 &&
+      survey.informationSufficiency > 0 &&
+      openLength >= 10 &&
+      openLength <= 500,
+  );
+}
+
+export function isPostRevealSurveyComplete(survey: PostRevealSurveyAnswers | undefined): survey is PostRevealSurveyAnswers {
+  const openLength = survey?.openRevision.trim().length ?? 0;
+
+  return Boolean(
+    survey?.revisedPrimaryAttribution &&
+      survey.revisedIndividualResponsibility > 0 &&
+      survey.perceivedStructuralImpact > 0 &&
+      survey.postProtestLegitimacy > 0 &&
+      survey.postRuleCorrectionSupport > 0 &&
+      survey.postRedistributionSupport > 0 &&
+      survey.initialJudgmentAccuracy > 0 &&
+      survey.perspectiveChange > 0 &&
+      openLength >= 10 &&
+      openLength <= 500,
+  );
+}
 
 export function calculateTreatmentChoiceCounts(game: HiddenCostGameState): TreatmentChoiceCounts {
   return game.rounds.reduce<TreatmentChoiceCounts>(
@@ -68,69 +103,83 @@ export function calculateComputedResearchMetrics({
   const summary = calculateGameSummary(game);
 
   return {
-    individualAttributionPre: 6 - preRevealSurvey.successAttribution,
-    individualAttributionPost: 6 - postRevealSurvey.successAttribution,
-    systemicAttributionPre: preRevealSurvey.successAttribution,
-    systemicAttributionPost: postRevealSurvey.successAttribution,
-    protestShift: postRevealSurvey.protestLegitimacy - preRevealSurvey.protestLegitimacy,
-    fairnessShift: postRevealSurvey.ruleChangeFairness - preRevealSurvey.ruleChangeFairness,
-    empathyShift: postRevealSurvey.viewChange,
-    certaintyCorrection: preRevealSurvey.judgmentConfidence - postRevealSurvey.initialJudgmentAccuracy,
+    responsibilityShift: postRevealSurvey.revisedIndividualResponsibility - preRevealSurvey.individualResponsibility,
+    constraintRecognitionShift: postRevealSurvey.perceivedStructuralImpact - preRevealSurvey.constraintSuspicion,
+    protestLegitimacyShift: postRevealSurvey.postProtestLegitimacy - preRevealSurvey.protestLegitimacy,
+    ruleCorrectionSupportShift: postRevealSurvey.postRuleCorrectionSupport - preRevealSurvey.ruleCorrectionSupport,
+    redistributionSupportShift: postRevealSurvey.postRedistributionSupport - preRevealSurvey.redistributionSupport,
+    certaintyCorrection: preRevealSurvey.confidence - postRevealSurvey.initialJudgmentAccuracy,
+    informationCaution: 8 - preRevealSurvey.informationSufficiency,
+    perspectiveChange: postRevealSurvey.perspectiveChange,
     burden: roundMetric(summary.totalTreatmentCostPaid / Math.max(summary.totalIncome, 1)),
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
+    attributionCategoryShift: {
+      pre: preRevealSurvey.primaryAttribution,
+      post: postRevealSurvey.revisedPrimaryAttribution,
+    },
   };
 }
 
 export function buildParticipantInterpretation(metrics: ComputedResearchMetrics): string[] {
   const interpretations: string[] = [];
 
-  if (metrics.protestShift > 0) {
-    interpretations.push("After learning about the unequal conditions, your protest-legitimacy rating increased.");
-  } else if (metrics.protestShift < 0) {
-    interpretations.push("After learning about the unequal conditions, your protest-legitimacy rating decreased.");
+  if (metrics.responsibilityShift < 0) {
+    interpretations.push("After the reveal, your ratings placed less responsibility on lower-scoring players.");
+  } else if (metrics.responsibilityShift > 0) {
+    interpretations.push("After the reveal, your ratings placed more responsibility on lower-scoring players.");
   } else {
-    interpretations.push("Your protest-legitimacy rating stayed the same after the reveal.");
+    interpretations.push("Your responsibility rating for lower-scoring players stayed the same after the reveal.");
   }
 
-  if (metrics.fairnessShift > 0) {
-    interpretations.push("After the reveal, your support for adjusting the rules increased.");
-  } else if (metrics.fairnessShift < 0) {
-    interpretations.push("After the reveal, your support for adjusting the rules decreased.");
+  if (metrics.protestLegitimacyShift > 0) {
+    interpretations.push("After learning about unequal cost conditions, you rated objections from lower-scoring players as more legitimate.");
+  } else if (metrics.protestLegitimacyShift < 0) {
+    interpretations.push("After learning about unequal cost conditions, you rated objections from lower-scoring players as less legitimate.");
   } else {
-    interpretations.push("Your support for adjusting the rules stayed the same after the reveal.");
+    interpretations.push("Your rating of objection legitimacy stayed the same after the reveal.");
   }
 
-  if (metrics.individualAttributionPost < metrics.individualAttributionPre) {
-    interpretations.push("After the reveal, your ratings placed relatively more weight on game conditions than before.");
-  } else if (metrics.individualAttributionPost > metrics.individualAttributionPre) {
-    interpretations.push("After the reveal, your ratings placed relatively more weight on individual choices than before.");
-  } else {
-    interpretations.push("Your balance between individual-choice and game-condition explanations stayed the same after the reveal.");
+  if (metrics.ruleCorrectionSupportShift > 0) {
+    interpretations.push("After the reveal, your support for rule correction increased.");
+  } else if (metrics.ruleCorrectionSupportShift < 0) {
+    interpretations.push("After the reveal, your support for rule correction decreased.");
+  }
+
+  if (metrics.redistributionSupportShift > 0) {
+    interpretations.push("After the reveal, your support for point redistribution increased.");
+  } else if (metrics.redistributionSupportShift < 0) {
+    interpretations.push("After the reveal, your support for point redistribution decreased.");
   }
 
   if (metrics.certaintyCorrection > 0) {
-    interpretations.push("Your pre-reveal confidence was higher than your later rating of that initial judgment’s accuracy.");
+    interpretations.push("Your confidence before the reveal was higher than your later rating of that initial judgment’s accuracy.");
   } else if (metrics.certaintyCorrection < 0) {
-    interpretations.push("Your later accuracy rating was higher than your pre-reveal confidence.");
-  } else {
-    interpretations.push("Your pre-reveal confidence matched your later rating of that initial judgment’s accuracy.");
+    interpretations.push("Your later accuracy rating was higher than your confidence before the reveal.");
   }
+
+  interpretations.push("These summaries describe changes in survey responses. They are not a psychological diagnosis or a judgment of character.");
 
   return interpretations;
 }
 
 export function getResearchExportCompleteness(session: ResearchSession): ResearchExportCompleteness {
+  const hasPreRevealSurvey = isPreRevealSurveyComplete(session.preRevealSurvey);
+  const hasPostRevealSurvey = isPostRevealSurveyComplete(session.postRevealSurvey);
+  const completedGame = Boolean(session.game?.completedAt);
+
   return {
     hasParticipantProfile: Boolean(session.participantProfile),
+    completedGame,
     completedGameRounds: session.game?.rounds.length ?? 0,
-    hasPreRevealSurvey: Boolean(session.preRevealSurvey),
-    hasPostRevealSurvey: Boolean(session.postRevealSurvey),
-    isComplete: Boolean(session.participantProfile && session.game && session.preRevealSurvey && session.postRevealSurvey),
+    hasPreRevealSurvey,
+    hasSeenReveal: Boolean(session.revealViewedAt),
+    hasPostRevealSurvey,
+    isComplete: Boolean(session.participantProfile && completedGame && hasPreRevealSurvey && session.revealViewedAt && hasPostRevealSurvey),
   };
 }
 
 export function buildResearchExport(session: ResearchSession, createdAt = new Date().toISOString()): ResearchExport | null {
-  if (!session.game || !session.preRevealSurvey || !session.postRevealSurvey) {
+  if (!session.game || !isPreRevealSurveyComplete(session.preRevealSurvey) || !isPostRevealSurveyComplete(session.postRevealSurvey)) {
     return null;
   }
 
@@ -143,9 +192,15 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
 
   return {
     exportVersion: RESEARCH_EXPORT_VERSION,
+    schemaVersion: RESEARCH_SCHEMA_VERSION,
     sessionId: session.sessionId,
     createdAt,
     sessionCreatedAt: session.createdAt,
+    preRevealSurveyStartedAt: session.preRevealSurveyStartedAt,
+    preRevealSurveyCompletedAt: session.preRevealSurveyCompletedAt,
+    revealViewedAt: session.revealViewedAt,
+    postRevealSurveyStartedAt: session.postRevealSurveyStartedAt,
+    postRevealSurveyCompletedAt: session.postRevealSurveyCompletedAt,
     participantProfile: session.participantProfile,
     assignedProfile: {
       displayedProfile: session.game.displayedProfile,

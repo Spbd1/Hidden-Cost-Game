@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-const ratingValues = [1, 2, 3, 4, 5];
+const ratingValues = [1, 2, 3, 4, 5, 6, 7];
 
 export function HelperNote({ children, tone = "info" }: { children: ReactNode; tone?: "info" | "warning" | "neutral" }) {
   const tones = {
@@ -46,9 +46,9 @@ export function LikertQuestion({ name, legend, leftLabel, rightLabel, value, onC
       <div className="space-y-4 rounded-2xl border border-slate-200 p-4">
         <div className="grid gap-2 text-xs font-medium uppercase tracking-wide text-slate-500 sm:grid-cols-2">
           <span>1 = {leftLabel}</span>
-          <span className="sm:text-right">5 = {rightLabel}</span>
+          <span className="sm:text-right">7 = {rightLabel}</span>
         </div>
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-7 gap-2">
           {ratingValues.map((rating) => (
             <label key={rating} className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border border-slate-200 p-3 text-sm font-semibold text-slate-700 transition hover:border-research-200 hover:bg-slate-50 has-[:checked]:border-research-500 has-[:checked]:bg-research-50 has-[:checked]:text-research-800">
               <input type="radio" name={name} value={rating} checked={value === rating} onChange={() => onChange(rating)} className="h-4 w-4 accent-research-600" />
@@ -61,7 +61,7 @@ export function LikertQuestion({ name, legend, leftLabel, rightLabel, value, onC
   );
 }
 
-export function TextQuestion({ label, value, onChange, placeholder = "Write one sentence..." }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
+export function TextQuestion({ label, value, onChange, placeholder = "Write one sentence...", minLength, maxLength }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; minLength?: number; maxLength?: number }) {
   return (
     <label className="block space-y-3">
       <span className="text-base font-semibold text-ink">{label}</span>
@@ -70,7 +70,10 @@ export function TextQuestion({ label, value, onChange, placeholder = "Write one 
         onChange={(event) => onChange(event.target.value)}
         className="min-h-24 w-full resize-y rounded-2xl border border-slate-200 px-4 py-3 text-sm leading-6 text-ink outline-none transition placeholder:text-slate-400 focus:border-research-500 focus:ring-4 focus:ring-research-100"
         placeholder={placeholder}
+        minLength={minLength}
+        maxLength={maxLength}
       />
+      {maxLength ? <span className="block text-right text-xs text-slate-500">{value.length}/{maxLength} characters</span> : null}
     </label>
   );
 }

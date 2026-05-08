@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { buildResearchExport, getResearchExportCompleteness } from "@/utils/researchMetrics";
-import { createInitialSession, getStoredSession, safeJsonStringify, saveStoredSession } from "@/utils/session";
+import { STORAGE_KEY, createInitialSession, getStoredSession, safeJsonStringify, saveStoredSession } from "@/utils/session";
 import type { ResearchExport, ResearchSession } from "@/types/research";
 
 type ExportPanelProps = {
@@ -33,7 +33,9 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
     }
 
     try {
-      setStoredSession(getStoredSession("export"));
+      const exportSession = { ...getStoredSession("export"), currentStage: "export" as const };
+      saveStoredSession(exportSession);
+      setStoredSession(exportSession);
     } catch {
       const initialSession = createInitialSession("export");
       saveStoredSession(initialSession);
@@ -45,6 +47,15 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
     await navigator.clipboard.writeText(json);
     setCopyStatus("Copied");
     window.setTimeout(() => setCopyStatus("Copy JSON"), 1600);
+  }
+
+  function handleReset() {
+    if (!window.confirm("Reset this study session? This clears local progress and cannot be undone.")) {
+      return;
+    }
+
+    window.localStorage.removeItem(STORAGE_KEY);
+    window.location.href = "/";
   }
 
   function handleDownload() {
@@ -72,6 +83,9 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
           </button>
           <button onClick={handleDownload} className="rounded-full bg-research-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-research-700 focus:outline-none focus:ring-4 focus:ring-research-100">
             Download JSON
+          </button>
+          <button onClick={handleReset} className="rounded-full border border-rose-200 bg-white px-5 py-3 text-sm font-semibold text-rose-700 transition hover:border-rose-400 hover:bg-rose-50 focus:outline-none focus:ring-4 focus:ring-rose-100">
+            Reset study session
           </button>
         </div>
       </div>
