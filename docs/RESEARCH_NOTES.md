@@ -58,3 +58,12 @@ Computed metrics summarize analysis-ready outcomes, including:
 4. Run a small participant pilot to estimate completion time, attrition, item clarity, and whether the hidden rule reveal is understandable.
 5. Inspect distributions for assignment balance, incomplete submissions, extreme response patterns, and missing data.
 6. Freeze the consent version, schema version, and analysis plan before collecting the main sample.
+
+## Contact and collaboration
+
+This project is maintained by Dr. Mohammad Moradi.
+
+- Email: dr.moradi@gmail.com
+- LinkedIn: https://www.linkedin.com/in/mohammad-moradik/
+
+Thoughtful feedback, methodological suggestions, replication ideas, and collaboration inquiries are very welcome. If you are interested in the project or have comments on the study design, please feel free to get in touch.

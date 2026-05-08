@@ -139,3 +139,12 @@ docker compose exec -T postgres pg_dump -U hcg -d hidden_cost_game > backups/hid
 ```
 
 Store important backups somewhere other than the VPS, such as encrypted object storage or an institutional backup location.
+
+## Contact and collaboration
+
+This project is maintained by Dr. Mohammad Moradi.
+
+- Email: dr.moradi@gmail.com
+- LinkedIn: https://www.linkedin.com/in/mohammad-moradik/
+
+Thoughtful feedback, methodological suggestions, replication ideas, and collaboration inquiries are very welcome. If you are interested in the project or have comments on the study design, please feel free to get in touch.

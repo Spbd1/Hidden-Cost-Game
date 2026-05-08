@@ -191,3 +191,7 @@ docker compose up --build -d
 
 - Database migrations are harder to roll back than app code. Prisma deploy migrations are intended to move forward. Always back up before running migrations against production data.
 - If a migration has already changed production data or schema, restore from a verified backup or create a forward-fix migration rather than running destructive reset commands.
+
+## Maintainer contact
+
+For deployment questions, methodological feedback, or collaboration inquiries, contact Dr. Mohammad Moradi at dr.moradi@gmail.com or https://www.linkedin.com/in/mohammad-moradik/.

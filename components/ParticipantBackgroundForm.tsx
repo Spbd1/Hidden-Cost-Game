@@ -15,7 +15,7 @@ const genderOptions = ["Woman", "Man", "Non-binary / another description", prefe
 const medicalCostPressureOptions = ["Yes, several times", "Yes, once or twice", "No", "Not sure", preferNotToAnswer];
 const healthcareCoverageOptions = ["Public or general insurance", "Private or supplementary insurance", "Special organizational coverage", "No insurance", "I don’t know", preferNotToAnswer];
 const specialOrganizationalCoverageOptions = ["Yes", "No", "I don’t know", preferNotToAnswer];
-const priorExposureToUnequalSystemsOptions = ["Yes, personally experienced", "Yes, closely observed", "No", "Not sure", preferNotToAnswer];
+const priorExposureToComplexSystemsOptions = ["Yes, personally experienced", "Yes, closely observed", "No", "Not sure", preferNotToAnswer];
 
 const initialProfile: ParticipantProfile = {
   ageGroup: "",
@@ -139,16 +139,16 @@ export function ParticipantBackgroundForm() {
 
         <LikertQuestion
           name="inequalityOrientation"
-          legend="7. When someone falls behind in a system, what do you usually see as the main cause?"
-          leftLabel="Individual choices and effort"
-          rightLabel="System conditions and rules"
+          legend="7. When people make decisions in complex settings, what do you usually see as most important for understanding their outcomes?"
+          leftLabel="Their own choices"
+          rightLabel="The broader context"
           value={profile.inequalityOrientation}
           onChange={(value) => updateProfile("inequalityOrientation", value)}
         />
 
         <LikertQuestion
           name="institutionalTrust"
-          legend="8. How much do you trust public institutions to apply rules fairly?"
+          legend="8. How much do you trust public institutions to apply rules consistently?"
           leftLabel="Do not trust at all"
           rightLabel="Trust completely"
           value={profile.institutionalTrust}
@@ -156,16 +156,16 @@ export function ParticipantBackgroundForm() {
         />
 
         <SingleChoiceQuestion
-          legend="9. Optional: Have you personally experienced or closely observed a situation where two groups faced different rules or costs within the same system?"
+          legend="9. Optional: Have you personally experienced or closely observed a situation where important context changed how outcomes should be interpreted?"
           name="priorExposureToUnequalSystems"
-          options={priorExposureToUnequalSystemsOptions}
+          options={priorExposureToComplexSystemsOptions}
           value={profile.priorExposureToUnequalSystems ?? ""}
           onChange={(value) => updateProfile("priorExposureToUnequalSystems", value)}
         />
 
         <LikertWithPreferNot
           name="policyPreferenceBaseline"
-          legend="10. Optional: Before starting the game, how much do you generally support correcting outcomes when unequal starting conditions are shown?"
+          legend="10. Optional: Before starting the task, how much do you generally support revisiting conclusions when new contextual information becomes available?"
           leftLabel="Do not support"
           rightLabel="Strongly support"
           value={profile.policyPreferenceBaseline ?? null}

@@ -87,13 +87,13 @@ export function ResultsTable({ mode = "visible" }: { mode?: ResultsMode }) {
   return (
     <Card className="space-y-6">
       <p className="rounded-2xl bg-slate-50 p-5 leading-7 text-slate-700">
-        At this stage, you can see only the visible score table. Hidden profiles, metrics, and post-reveal interpretation are intentionally not shown yet. Please continue to the pre-reveal survey and answer based only on what you have seen so far.
+        At this stage, you can see the score table. Please answer based only on the information currently available.
       </p>
 
       <ResultsRankingTable players={sortedPlayers} />
 
       <div className="flex justify-end border-t border-slate-200 pt-6">
-        <ButtonLink href="/pre-reveal-survey">Continue to pre-reveal survey</ButtonLink>
+        <ButtonLink href="/pre-reveal-survey">Continue to questions</ButtonLink>
       </div>
     </Card>
   );

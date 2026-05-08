@@ -11,7 +11,7 @@ import type { PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
 const primaryAttributionOptions = [
   "They made less effective decisions during the game",
   "They accepted too much risk",
-  "They may have faced constraints that are not visible in the results table",
+  "Factors not shown in the score table may have influenced the results",
   "Random variation or luck may have played a role",
   "I do not have enough information to judge",
 ];
@@ -122,10 +122,10 @@ export function PreRevealSurveyForm() {
         />
 
         <LikertQuestion name="individualResponsibility" legend="2. How responsible do you think lower-scoring players were for their final scores?" leftLabel="Not responsible at all" rightLabel="Fully responsible" value={answers.individualResponsibility} onChange={(value) => updateAnswer("individualResponsibility", value)} />
-        <LikertQuestion name="constraintSuspicion" legend="3. How likely do you think it is that players faced different constraints during the game?" leftLabel="Very unlikely" rightLabel="Very likely" value={answers.constraintSuspicion} onChange={(value) => updateAnswer("constraintSuspicion", value)} />
+        <LikertQuestion name="constraintSuspicion" legend="3. How likely do you think it is that factors not shown in the score table influenced the results?" leftLabel="Very unlikely" rightLabel="Very likely" value={answers.constraintSuspicion} onChange={(value) => updateAnswer("constraintSuspicion", value)} />
         <LikertQuestion name="protestLegitimacy" legend="4. If lower-scoring players objected to the outcome, how legitimate would their objection seem?" leftLabel="Not legitimate at all" rightLabel="Completely legitimate" value={answers.protestLegitimacy} onChange={(value) => updateAnswer("protestLegitimacy", value)} />
-        <LikertQuestion name="ruleCorrectionSupport" legend="5. Would it be fair to adjust the rules or scoring system if some players were disadvantaged by hidden constraints?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.ruleCorrectionSupport} onChange={(value) => updateAnswer("ruleCorrectionSupport", value)} />
-        <LikertQuestion name="redistributionSupport" legend="6. Would it be fair to transfer some points from higher-scoring players to lower-scoring players if hidden disadvantage were later confirmed?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.redistributionSupport} onChange={(value) => updateAnswer("redistributionSupport", value)} />
+        <LikertQuestion name="ruleCorrectionSupport" legend="5. If later information showed that the score table did not tell the full story, would it be fair to reconsider how outcomes are interpreted?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.ruleCorrectionSupport} onChange={(value) => updateAnswer("ruleCorrectionSupport", value)} />
+        <LikertQuestion name="redistributionSupport" legend="6. If later information changed the interpretation of the results, would some form of score adjustment seem fair?" leftLabel="Strongly disagree" rightLabel="Strongly agree" value={answers.redistributionSupport} onChange={(value) => updateAnswer("redistributionSupport", value)} />
         <LikertQuestion name="confidence" legend="7. How confident are you in your interpretation of the score differences?" leftLabel="Not confident at all" rightLabel="Completely confident" value={answers.confidence} onChange={(value) => updateAnswer("confidence", value)} />
         <LikertQuestion name="informationSufficiency" legend="8. How much information do you feel you currently have to judge why players ended with different scores?" leftLabel="Very little information" rightLabel="Enough information" value={answers.informationSufficiency} onChange={(value) => updateAnswer("informationSufficiency", value)} />
 
@@ -134,7 +134,7 @@ export function PreRevealSurveyForm() {
         {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all closed-ended items and write 10–500 characters in the explanation. Your draft has been saved in this browser.</HelperNote> : null}
 
         <div className="flex justify-end border-t border-slate-200 pt-6">
-          <PrimaryButton>Continue to reveal</PrimaryButton>
+          <PrimaryButton>Continue to debrief</PrimaryButton>
         </div>
       </form>
     </Card>

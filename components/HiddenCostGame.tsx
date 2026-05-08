@@ -172,7 +172,7 @@ export function HiddenCostGame() {
       </div>
 
       <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm font-medium leading-6 text-slate-700">
-        You only see the costs assigned to your displayed profile. Other players may or may not have the same cost conditions.
+        The task shows the information needed for this round. Additional scenario details are explained later as part of the study design.
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">

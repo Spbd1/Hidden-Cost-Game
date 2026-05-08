@@ -324,6 +324,15 @@ Computed metrics are derived from game and survey responses for prototype analys
 - **`careAvoidance`**: skipped treatments plus half of partial treatments.
 - **`attributionCategoryShift`**: pre-reveal primary attribution compared with post-reveal revised primary attribution.
 
+## Contact and collaboration
+
+This project is maintained by Dr. Mohammad Moradi.
+
+- Email: dr.moradi@gmail.com
+- LinkedIn: https://www.linkedin.com/in/mohammad-moradik/
+
+Thoughtful feedback, methodological suggestions, replication ideas, and collaboration inquiries are very welcome. If you are interested in the project or have comments on the study design, please feel free to get in touch.
+
 ## Privacy and ethics
 
 This project uses incomplete information and should be reviewed carefully before use with real participants.
