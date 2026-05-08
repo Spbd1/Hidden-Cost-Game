@@ -1,0 +1,199 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { Card } from "@/components/Card";
+import {
+  ROUND_INCOME_POINTS,
+  createHiddenCostGameState,
+  formatPoints,
+  getHealthAfterChoice,
+  getPaidCost,
+  getTreatmentCost,
+  medicalEvents,
+} from "@/utils/game";
+import { getStoredSession, saveStoredSession } from "@/utils/session";
+import type { GameChoice, HiddenCostGameState, ResearchSession } from "@/types/research";
+
+const choiceLabels: Record<GameChoice, string> = {
+  "full-treatment": "Full treatment",
+  "partial-treatment": "Partial treatment",
+  "skip-treatment": "Skip treatment",
+};
+
+export function HiddenCostGame() {
+  const router = useRouter();
+  const [session, setSession] = useState<ResearchSession | null>(null);
+  const [game, setGame] = useState<HiddenCostGameState | null>(null);
+  const [roundStartedAt, setRoundStartedAt] = useState(() => Date.now());
+
+  useEffect(() => {
+    const storedSession = getStoredSession("game");
+    const nextGame = storedSession.game?.completedAt ? createHiddenCostGameState() : storedSession.game ?? createHiddenCostGameState();
+    const nextSession = {
+      ...storedSession,
+      currentStage: "game" as const,
+      game: nextGame,
+    };
+
+    saveStoredSession(nextSession);
+    setSession(nextSession);
+    setGame(nextGame);
+    setRoundStartedAt(Date.now());
+  }, []);
+
+  const currentEvent = game ? medicalEvents[game.currentRoundIndex] : undefined;
+  const actualFullCost = useMemo(() => {
+    if (!game || !currentEvent) {
+      return 0;
+    }
+
+    return getTreatmentCost(currentEvent.baseFullCost, game.treatmentCostMultiplier);
+  }, [currentEvent, game]);
+  const actualPartialCost = useMemo(() => {
+    if (!game || !currentEvent) {
+      return 0;
+    }
+
+    return getTreatmentCost(currentEvent.basePartialCost, game.treatmentCostMultiplier);
+  }, [currentEvent, game]);
+
+  function handleChoice(choice: GameChoice) {
+    if (!session || !game || !currentEvent) {
+      return;
+    }
+
+    const timestamp = new Date().toISOString();
+    const paidCost = getPaidCost(choice, actualFullCost, actualPartialCost);
+    const scoreBefore = game.financialPoints;
+    const healthBefore = game.healthPoints;
+    const scoreAfter = Number((scoreBefore + ROUND_INCOME_POINTS - paidCost).toFixed(2));
+    const healthAfter = getHealthAfterChoice(choice, healthBefore);
+    const updatedRounds = [
+      ...game.rounds,
+      {
+        roundNumber: currentEvent.roundNumber,
+        eventName: currentEvent.eventName,
+        displayedProfile: game.displayedProfile,
+        hiddenProfile: game.hiddenProfile,
+        baseFullCost: currentEvent.baseFullCost,
+        basePartialCost: currentEvent.basePartialCost,
+        actualFullCost,
+        actualPartialCost,
+        choice,
+        paidCost,
+        scoreBefore,
+        scoreAfter,
+        healthBefore,
+        healthAfter,
+        timestamp,
+        decisionTimeMs: Date.now() - roundStartedAt,
+      },
+    ];
+    const isComplete = updatedRounds.length === medicalEvents.length;
+    const updatedGame: HiddenCostGameState = {
+      ...game,
+      financialPoints: scoreAfter,
+      healthPoints: healthAfter,
+      currentRoundIndex: isComplete ? game.currentRoundIndex : game.currentRoundIndex + 1,
+      completedAt: isComplete ? timestamp : undefined,
+      rounds: updatedRounds,
+    };
+    const updatedSession: ResearchSession = {
+      ...session,
+      currentStage: isComplete ? "results" : "game",
+      game: updatedGame,
+    };
+
+    saveStoredSession(updatedSession);
+    setSession(updatedSession);
+    setGame(updatedGame);
+
+    if (isComplete) {
+      router.push("/results");
+      return;
+    }
+
+    setRoundStartedAt(Date.now());
+  }
+
+  if (!game || !currentEvent) {
+    return (
+      <Card>
+        <p className="text-slate-600">Preparing the next medical event...</p>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+        <div>
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-research-700">
+            Round {currentEvent.roundNumber} of {medicalEvents.length}
+          </p>
+          <h2 className="mt-2 text-3xl font-semibold text-ink">{currentEvent.eventName}</h2>
+          <p className="mt-3 max-w-2xl leading-7 text-slate-600">
+            A medical event has occurred. Choose how much care to receive while balancing your financial and health points.
+          </p>
+        </div>
+        <div className="rounded-2xl border border-research-100 bg-research-50 px-5 py-4 text-sm font-semibold text-research-800">
+          Displayed profile: {game.displayedProfile}
+        </div>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatusCard label="Current financial points" value={formatPoints(game.financialPoints)} />
+        <StatusCard label="Current health points" value={formatPoints(game.healthPoints)} />
+        <StatusCard label="Skipping risk" value={currentEvent.skipRisk} />
+      </div>
+
+      <div className="rounded-2xl bg-slate-50 p-4 text-sm font-medium text-slate-700">
+        You only see the costs assigned to you.
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <ChoiceButton
+          title={choiceLabels["full-treatment"]}
+          cost={actualFullCost}
+          consequence="Health does not change."
+          onClick={() => handleChoice("full-treatment")}
+        />
+        <ChoiceButton
+          title={choiceLabels["partial-treatment"]}
+          cost={actualPartialCost}
+          consequence="Health decreases by 10."
+          onClick={() => handleChoice("partial-treatment")}
+        />
+        <ChoiceButton
+          title={choiceLabels["skip-treatment"]}
+          cost={0}
+          consequence="Health decreases by 25."
+          onClick={() => handleChoice("skip-treatment")}
+        />
+      </div>
+    </Card>
+  );
+}
+
+function StatusCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 p-5">
+      <p className="text-sm text-slate-500">{label}</p>
+      <p className="mt-2 text-2xl font-semibold capitalize text-ink">{value}</p>
+    </div>
+  );
+}
+
+function ChoiceButton({ title, cost, consequence, onClick }: { title: string; cost: number; consequence: string; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="rounded-3xl border border-slate-200 bg-white p-5 text-left shadow-sm transition hover:-translate-y-0.5 hover:border-research-300 hover:shadow-card focus:outline-none focus:ring-4 focus:ring-research-100"
+    >
+      <span className="text-lg font-semibold text-ink">{title}</span>
+      <span className="mt-4 block text-3xl font-bold text-research-700">{formatPoints(cost)} pts</span>
+      <span className="mt-3 block text-sm leading-6 text-slate-600">{consequence}</span>
+    </button>
+  );
+}
