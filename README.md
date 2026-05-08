@@ -38,6 +38,9 @@ The implemented participant route sequence is:
 
 There is also a legacy **`/results`** route that redirects in the browser to `/individual-results` for sessions with a completed post-reveal survey, or to `/visible-results` otherwise.
 
+<img width="812" height="896" alt="image" src="https://github.com/user-attachments/assets/054f2c36-b9a6-4109-9cc0-a656081b0577" />
+
+
 ## Current implementation
 
 The current implementation uses:
