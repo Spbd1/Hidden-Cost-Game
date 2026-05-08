@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { buildResearchExport } from "@/utils/researchMetrics";
 import { createInitialSession, safeJsonStringify, STORAGE_KEY } from "@/utils/session";
-import type { ResearchSession } from "@/types/research";
+import type { ResearchExport, ResearchSession } from "@/types/research";
+
+type ExportPanelProps = {
+  session?: ResearchSession | null;
+  title?: string;
+};
 
 const emptySession: ResearchSession = {
   sessionId: "pending-local-session",
@@ -12,23 +18,30 @@ const emptySession: ResearchSession = {
   responses: {},
 };
 
-export function ExportPanel() {
-  const [session, setSession] = useState<ResearchSession>(emptySession);
+export function ExportPanel({ session: providedSession, title = "Research JSON export" }: ExportPanelProps) {
+  const [storedSession, setStoredSession] = useState<ResearchSession>(emptySession);
   const [copyStatus, setCopyStatus] = useState("Copy JSON");
-  const json = useMemo(() => safeJsonStringify(session), [session]);
+  const session = providedSession ?? storedSession;
+  const exportData = useMemo<ResearchExport | ResearchSession>(() => buildResearchExport(session, session.createdAt) ?? session, [session]);
+  const json = useMemo(() => safeJsonStringify(exportData), [exportData]);
+  const fileName = "computedMetrics" in exportData ? `${exportData.sessionId}-research-export.json` : `${session.sessionId}.json`;
 
   useEffect(() => {
+    if (providedSession) {
+      return;
+    }
+
     const stored = window.localStorage.getItem(STORAGE_KEY);
 
     if (stored) {
-      setSession(JSON.parse(stored) as ResearchSession);
+      setStoredSession(JSON.parse(stored) as ResearchSession);
       return;
     }
 
     const initialSession = createInitialSession("export");
     window.localStorage.setItem(STORAGE_KEY, safeJsonStringify(initialSession));
-    setSession(initialSession);
-  }, []);
+    setStoredSession(initialSession);
+  }, [providedSession]);
 
   async function handleCopy() {
     await navigator.clipboard.writeText(json);
@@ -41,7 +54,7 @@ export function ExportPanel() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
-    link.download = `${session.sessionId}.json`;
+    link.download = fileName;
     link.click();
     URL.revokeObjectURL(url);
   }
@@ -49,13 +62,18 @@ export function ExportPanel() {
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-2xl font-semibold text-ink">JSON export</h2>
+        <div>
+          <h2 className="text-2xl font-semibold text-ink">{title}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            This structured export is intended for prototype review and research workflow testing.
+          </p>
+        </div>
         <div className="flex gap-3">
           <button onClick={handleCopy} className="rounded-full border border-slate-300 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-research-600 hover:text-research-700">
             {copyStatus}
           </button>
           <button onClick={handleDownload} className="rounded-full bg-research-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-research-700">
-            Download
+            Download JSON
           </button>
         </div>
       </div>
