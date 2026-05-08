@@ -105,6 +105,53 @@ export interface PostRevealSurveyAnswers {
   viewChangeExplanation: string;
 }
 
+
+export interface TreatmentChoiceCounts {
+  fullTreatmentChoices: number;
+  partialTreatmentChoices: number;
+  skippedTreatmentChoices: number;
+}
+
+export interface GameSummary extends TreatmentChoiceCounts {
+  actualHiddenProfile: HiddenProfileMeaning;
+  assignedProfile: DisplayedProfile;
+  finalFinancialScore: number;
+  finalHealthScore: number;
+  totalTreatmentCostPaid: number;
+  totalIncome: number;
+}
+
+export interface ComputedResearchMetrics {
+  individualAttributionPre: number;
+  individualAttributionPost: number;
+  systemicAttributionPre: number;
+  systemicAttributionPost: number;
+  protestShift: number;
+  fairnessShift: number;
+  empathyShift: number;
+  certaintyCorrection: number;
+  burden: number;
+  careAvoidance: number;
+}
+
+export interface ResearchExportAssignedProfile {
+  displayedProfile: DisplayedProfile;
+  hiddenProfile: HiddenProfileMeaning;
+  treatmentCostMultiplier: number;
+}
+
+export interface ResearchExport {
+  sessionId: string;
+  createdAt: string;
+  participantProfile: HiddenProfileMeaning;
+  assignedProfile: ResearchExportAssignedProfile;
+  gameSummary: GameSummary;
+  gameRounds: GameRoundData[];
+  preRevealSurvey: PreRevealSurveyAnswers;
+  postRevealSurvey: PostRevealSurveyAnswers;
+  computedMetrics: ComputedResearchMetrics;
+}
+
 export interface ResearchSession {
   sessionId: string;
   createdAt: string;
