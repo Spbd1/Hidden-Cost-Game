@@ -1,0 +1,29 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ResearchSubmission {
+  id                       String   @id @default(cuid())
+  sessionId                String
+  schemaVersion            String
+  exportVersion            String
+  consentVersion           String?
+  assignedDisplayedProfile String?
+  assignedHiddenProfile    String?
+  completedGameRounds      Int
+  submittedAt              DateTime @default(now())
+  payload                  Json
+  appVersion               String?
+  userAgentHash            String?
+  createdAt                DateTime @default(now())
+
+  @@index([sessionId])
+  @@index([schemaVersion])
+  @@index([assignedHiddenProfile])
+  @@index([submittedAt])
+}
