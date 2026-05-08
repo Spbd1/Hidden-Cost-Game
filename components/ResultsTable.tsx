@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
 import { formatPoints } from "@/utils/game";
 import { getStoredSession, saveStoredSession } from "@/utils/session";
-import type { HiddenCostGameState, ResearchSession } from "@/types/research";
+import type { HiddenCostGameState, ParticipantProfile, ResearchSession } from "@/types/research";
 
 const fictionalPlayers = [
   { name: "Player 1", score: 164 },
@@ -50,7 +50,7 @@ export function ResultsTable() {
   }
 
   if (hasPostRevealSurvey) {
-    return <IndividualResults game={game} />;
+    return <IndividualResults game={game} participantProfile={session?.participantProfile} />;
   }
 
   return (
@@ -69,7 +69,11 @@ export function ResultsTable() {
   );
 }
 
-function IndividualResults({ game }: { game: HiddenCostGameState }) {
+function IndividualResults({ game, participantProfile }: { game: HiddenCostGameState; participantProfile?: ParticipantProfile }) {
+  const answeredBackgroundItems = participantProfile
+    ? Object.values(participantProfile).filter((value) => value !== null && value !== "").length
+    : 0;
+
   return (
     <Card className="space-y-6">
       <div className="rounded-2xl bg-research-50 p-5 leading-7 text-research-900">
@@ -89,6 +93,15 @@ function IndividualResults({ game }: { game: HiddenCostGameState }) {
           {game.displayedProfile} = {game.hiddenProfile} = cost multiplier {game.treatmentCostMultiplier.toFixed(1)}
         </p>
       </div>
+
+      {participantProfile ? (
+        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-500">Background context</p>
+          <p className="mt-3 leading-7 text-slate-700">
+            Your non-identifying background profile was saved for research export ({answeredBackgroundItems} of 8 items answered). Detailed background answers are not shown here.
+          </p>
+        </div>
+      ) : null}
 
       <div className="flex justify-end border-t border-slate-200 pt-6">
         <ButtonLink href="/export">Continue to export</ButtonLink>
