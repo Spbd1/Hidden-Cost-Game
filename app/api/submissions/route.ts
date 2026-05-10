@@ -1,5 +1,5 @@
 import { randomUUID, createHash } from "node:crypto";
-import type { Prisma } from "@prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/prisma";
@@ -20,6 +20,14 @@ type RateLimitEntry = {
 };
 
 const rateLimitBuckets = new Map<string, RateLimitEntry>();
+
+type ResearchSubmissionCreateData = Parameters<PrismaClient["researchSubmission"]["create"]>[0]["data"];
+type ResearchSubmissionPayloadInput = ResearchSubmissionCreateData["payload"];
+
+type ResearchSubmissionPayload = Record<string, unknown> & {
+  serverSubmissionId: string;
+  submittedAt: string;
+};
 
 export async function POST(request: NextRequest) {
   if (!isServerSubmissionEnabled()) {
@@ -66,7 +74,7 @@ export async function POST(request: NextRequest) {
 
   const serverSubmissionId = randomUUID();
   const submittedAt = new Date();
-  const payload = {
+  const payload: ResearchSubmissionPayload = {
     ...validation.data,
     serverSubmissionId,
     submittedAt: submittedAt.toISOString(),
@@ -85,7 +93,7 @@ export async function POST(request: NextRequest) {
         assignedHiddenProfile: validation.data.assignedProfile.hiddenProfile,
         completedGameRounds: validation.data.completeness.completedGameRounds,
         submittedAt,
-        payload: payload as Prisma.InputJsonValue,
+        payload: payload as ResearchSubmissionPayloadInput,
         appVersion: process.env.npm_package_version,
         userAgentHash: hashUserAgent(request.headers.get("user-agent")),
       },

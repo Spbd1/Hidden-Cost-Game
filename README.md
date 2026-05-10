@@ -55,12 +55,71 @@ The current implementation uses:
 - **Simple protected admin dashboard** at `/admin` using bearer-token-style access with `ADMIN_EXPORT_TOKEN`.
 - **Security headers** configured in `next.config.mjs`, including CSP, frame denial, content-type protection, referrer policy, and a restrictive permissions policy.
 
-## Quick start: local demo mode
+## Local setup
 
-Install dependencies and start the development server:
+### Required tools
+
+- **Node.js 22 LTS**. The repository includes `.nvmrc`, so users of `nvm` can run `nvm use` from the project root.
+- **npm**. Use the committed `package-lock.json` with `npm ci` for reproducible installs on fresh clones and CI.
+- **PostgreSQL** only when using server submission or admin exports. Local demo mode can run without a database while server submission is disabled.
+
+### Clone repository
 
 ```bash
-npm install
+git clone https://github.com/Spbd1/Hidden-Cost-Game.git
+cd Hidden-Cost-Game
+nvm use # optional, if you use nvm
+```
+
+### Install dependencies
+
+```bash
+npm ci
+```
+
+Use `npm install` only when intentionally updating dependencies or regenerating `package-lock.json`.
+
+### Configure environment
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` before enabling server features:
+
+- Set `DATABASE_URL` to your PostgreSQL connection string when using server submission/admin exports.
+- Keep `ENABLE_SERVER_SUBMISSION="false"` and `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION="false"` for browser-only local demo mode.
+- Set a long random `ADMIN_EXPORT_TOKEN` before exposing admin routes.
+- Do not commit `.env` or real secrets.
+
+### Generate Prisma client
+
+```bash
+npm run db:generate
+# equivalent: npx prisma generate
+```
+
+### Run database migration
+
+For local development databases:
+
+```bash
+npm run db:dev
+# equivalent: npx prisma migrate dev
+```
+
+For production or CI/CD deployment databases:
+
+```bash
+npm run db:migrate
+# equivalent: npx prisma migrate deploy
+```
+
+These scripts wrap `npx prisma migrate dev` and `npx prisma migrate deploy`, respectively.
+
+### Start dev server
+
+```bash
 npm run dev
 ```
 
@@ -72,9 +131,7 @@ http://localhost:3000
 
 Local demo mode works without a database when server submission is disabled. In that mode, participant progress remains in the browser and completed sessions can still be copied or downloaded as JSON.
 
-## Local production test
-
-Run the same checks expected before deployment:
+### Build production bundle
 
 ```bash
 npm run typecheck
@@ -88,6 +145,8 @@ Then open:
 ```text
 http://localhost:3000
 ```
+
+`npm run dev` starts the hot-reloading development server. `npm run build` compiles the production bundle and catches build-time TypeScript, Next.js, and bundling issues that may not appear during development.
 
 ## Environment variables
 
@@ -105,7 +164,6 @@ Start from `.env.example` for local or server configuration.
 | `MAX_SUBMISSION_BODY_BYTES` | Optional | `250000` | Submission API | Maximum accepted submission body size. Defaults to 250000 bytes. |
 | `CONSENT_VERSION` | Optional server metadata fallback | `pilot-consent-v1` | Submission API | Stored as a fallback if a submitted payload lacks `consentVersion`. The client export currently uses the version constant in `utils/researchMetrics.ts`. |
 | `SCHEMA_VERSION` | Present in `.env.example`; not currently read by app code | `research-export-v1` | Deployment convention only | Reserved/configuration note for schema versioning. The client export currently uses the schema version constant in `utils/researchMetrics.ts`. |
-| `ADMIN_DASHBOARD_PASSWORD` | Not currently used by app code | `change-me-before-production` | Not used | Present in `.env.example`, but the implemented dashboard uses `ADMIN_EXPORT_TOKEN`, not a separate dashboard password. |
 
 For Docker Compose, `.env.example` also includes `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` for the bundled PostgreSQL service.
 
@@ -135,7 +193,7 @@ Use a reverse proxy such as Caddy or Nginx in front of the app for public deploy
 
 Requirements:
 
-- Node 20+
+- Node.js 22 LTS
 - npm
 - PostgreSQL
 - A configured `DATABASE_URL`
@@ -144,9 +202,9 @@ Requirements:
 Typical setup:
 
 ```bash
-npm install
+npm ci
 npm run db:generate
-npm run db:migrate
+npm run db:migrate # runs npx prisma migrate deploy
 npm run build
 npm run start
 ```
@@ -368,6 +426,28 @@ For pilot deployment:
 - Security headers are configured in `next.config.mjs`.
 - Submission rate limiting is in-memory and prototype-level; it is not enterprise-grade abuse protection and will reset when the app process restarts.
 
+## Deployment
+
+A production deployment should use the same reproducible setup as a fresh clone or CI runner:
+
+```bash
+npm ci
+npm run db:generate
+npm run db:migrate # runs npx prisma migrate deploy
+npm run build
+npm run start
+```
+
+Required deployment environment variables for server collection are:
+
+- `DATABASE_URL` for PostgreSQL storage and Prisma migrations.
+- `ENABLE_SERVER_SUBMISSION=true` so `POST /api/submissions` accepts submissions.
+- `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION=true` before `npm run build` so the participant UI exposes server submission.
+- `ADMIN_EXPORT_TOKEN` for `/admin` and `/api/admin/*` exports.
+- `APP_BASE_URL` for export helpers and deployment-specific examples.
+
+Optional operational controls are `SUBMISSION_RATE_LIMIT_WINDOW_MS`, `SUBMISSION_RATE_LIMIT_MAX`, and `MAX_SUBMISSION_BODY_BYTES`. They default to safe prototype values when unset, but production deployments should review them for the expected participant volume and hosting topology.
+
 ## Deployment checklist
 
 Before collecting pilot data:
@@ -377,8 +457,10 @@ Before collecting pilot data:
 - [ ] Set `ENABLE_SERVER_SUBMISSION=true` on the server.
 - [ ] Set `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION=true` before build so participants see the submission UI.
 - [ ] Use a strong `ADMIN_EXPORT_TOKEN`.
+- [ ] Install exactly from the lockfile: `npm ci`.
+- [ ] Generate Prisma client: `npm run db:generate`.
+- [ ] Run database migration: `npm run db:migrate` (`npx prisma migrate deploy`).
 - [ ] Run build checks: `npm run typecheck`, `npm run lint`, and `npm run build`.
-- [ ] Run database migration: `npm run db:migrate`.
 - [ ] Verify health: `curl http://localhost:3000/api/health` or the equivalent deployed URL.
 - [ ] Complete one test participant session.
 - [ ] Submit the test session.
@@ -393,11 +475,12 @@ Before collecting pilot data:
 
 ## Troubleshooting
 
-### `npm install` fails
+### Dependency installation fails
 
-- Confirm Node 20+ is installed: `node --version`.
-- Remove partial installs and retry: `rm -rf node_modules package-lock.json && npm install`.
-- If using CI or a lockfile added later, prefer the repository's documented install command.
+- Confirm Node.js 22 LTS is active: `node --version`.
+- Fresh clones and CI should use `npm ci`, not `npm install`.
+- If build works on one machine but not another, remove local install artifacts and reinstall from the lockfile: `rm -rf node_modules && npm ci`.
+- Use `npm install` only when intentionally changing dependencies and committing the resulting `package-lock.json`.
 
 ### Port 3000 is already in use
 
@@ -412,18 +495,25 @@ or stop the process currently using port 3000.
 ### `DATABASE_URL` missing
 
 - Local demo mode can run without `DATABASE_URL` if server submission is disabled.
+- Server submission API will not work without `DATABASE_URL`.
 - Server submission and admin exports require `DATABASE_URL`.
 - For Docker Compose, the app service builds `DATABASE_URL` from `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB`.
 
-### Prisma client not generated
+### Prisma types are missing or Prisma client is not generated
 
 Run:
+
+```bash
+npx prisma generate
+```
+
+or the equivalent package script:
 
 ```bash
 npm run db:generate
 ```
 
-Then restart the app process.
+Then restart the app process. This is required on fresh clones before TypeScript can use the generated Prisma client types reliably.
 
 ### Migration failed
 
@@ -441,7 +531,7 @@ Then restart the app process.
 
 ### Admin dashboard says invalid token
 
-- Re-enter `ADMIN_EXPORT_TOKEN`; do not use `ADMIN_DASHBOARD_PASSWORD` because the implemented dashboard does not use it.
+- Re-enter `ADMIN_EXPORT_TOKEN`; the implemented dashboard does not use a separate dashboard password.
 - Clear remembered admin token from the dashboard or browser storage if an old token was saved.
 - Confirm `/api/admin/stats` works with curl and the same token.
 
