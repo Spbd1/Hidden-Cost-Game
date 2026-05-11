@@ -111,7 +111,7 @@ function IndividualResults({
   postRevealSurvey: PostRevealSurveyAnswers;
 }) {
   const gameSummary = calculateGameSummary(game);
-  const computedMetrics = calculateComputedResearchMetrics({ game, preRevealSurvey, postRevealSurvey });
+  const computedMetrics = calculateComputedResearchMetrics({ game, preRevealSurvey, postRevealSurvey, preRevealSurveyOriginal: session.preRevealSurveyOriginal });
   const interpretations = buildParticipantInterpretation(computedMetrics);
 
   return (
@@ -221,6 +221,11 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Cost burden ratio", metrics.burden],
     ["Care avoidance index", metrics.careAvoidance],
     ["Attribution category shift", `${metrics.attributionCategoryShift.pre} → ${metrics.attributionCategoryShift.post}`],
+    ["Remembered responsibility error", metrics.rememberedResponsibilityError],
+    ["Remembered constraint suspicion error", metrics.rememberedConstraintSuspicionError],
+    ["Remembered attribution matches original", metrics.rememberedPrimaryAttributionMatchesOriginal ? "Yes" : "No"],
+    ["Memory confidence", metrics.memoryConfidence],
+    ["Memory distortion magnitude", metrics.memoryDistortionMagnitude],
   ] as const;
 
   return (
