@@ -34,6 +34,27 @@ export type AdminStats = {
   averageProtestLegitimacyShift: number;
   averageRuleCorrectionSupportShift: number;
   averageRedistributionSupportShift: number;
+  attemptedRevisionCount: number;
+  revisionUnlockedCount: number;
+  revisionLockedCount: number;
+  usedRevisionOpportunityCount: number;
+  averageRevisionMagnitude: number;
+  immediateRevealCount: number;
+  delayedRevealCount: number;
+  averageStandByInitialInterpretation: number;
+  averageRememberedResponsibilityError: number;
+  averageRememberedConstraintError: number;
+  rememberedAttributionMatchPercentage: number;
+  noCostInfoCount: number;
+  partialCostHintCount: number;
+  fullCostPreviewCount: number;
+  explainToSelfCount: number;
+  explainToOtherCount: number;
+  replayOfferedCount: number;
+  replayCompletedCount: number;
+  sameHiddenProfileCount: number;
+  switchedHiddenProfileCount: number;
+  averageBehaviorChangeCareAvoidance: number;
 };
 
 const AVERAGE_METRIC_KEYS = [
@@ -48,7 +69,11 @@ const AVERAGE_METRIC_KEYS = [
 
 type AverageMetricKey = (typeof AVERAGE_METRIC_KEYS)[number];
 
-type AverageAccumulator = Record<AverageMetricKey, { sum: number; count: number }>;
+type AverageAccumulator = Record<
+  AverageMetricKey,
+  { sum: number; count: number }
+>;
+type NumberAccumulator = { sum: number; count: number };
 
 type CursorPayload = {
   submittedAt: string;
@@ -68,7 +93,9 @@ export class AdminSubmissionError extends Error {
   }
 }
 
-export async function listAdminSubmissions(searchParams: URLSearchParams): Promise<AdminSubmissionPage> {
+export async function listAdminSubmissions(
+  searchParams: URLSearchParams,
+): Promise<AdminSubmissionPage> {
   assertDatabaseConfigured();
 
   const limit = parseLimit(searchParams.get("limit"));
@@ -78,7 +105,10 @@ export async function listAdminSubmissions(searchParams: URLSearchParams): Promi
     ? {
         OR: [
           { submittedAt: { lt: cursor.submittedAt } },
-          { submittedAt: { equals: cursor.submittedAt }, id: { lt: cursor.id } },
+          {
+            submittedAt: { equals: cursor.submittedAt },
+            id: { lt: cursor.id },
+          },
         ],
       }
     : undefined;
@@ -91,7 +121,10 @@ export async function listAdminSubmissions(searchParams: URLSearchParams): Promi
   });
 
   const pageRows = rows.slice(0, limit);
-  const nextCursor = rows.length > limit ? encodeCursor(pageRows[pageRows.length - 1]) : undefined;
+  const nextCursor =
+    rows.length > limit
+      ? encodeCursor(pageRows[pageRows.length - 1])
+      : undefined;
 
   return {
     items: normalizeRows(pageRows),
@@ -114,13 +147,37 @@ export async function getAdminStats(): Promise<AdminStats> {
   });
 
   const averages = createAverageAccumulator();
+  const revisionMagnitudeAverage = createNumberAccumulator();
+  const standByInitialInterpretationAverage = createNumberAccumulator();
+  const rememberedResponsibilityErrorAverage = createNumberAccumulator();
+  const rememberedConstraintErrorAverage = createNumberAccumulator();
+  const behaviorChangeCareAvoidanceAverage = createNumberAccumulator();
   let completedSubmissions = 0;
   let highCoverageCount = 0;
   let lowCoverageCount = 0;
+  let attemptedRevisionCount = 0;
+  let revisionUnlockedCount = 0;
+  let revisionLockedCount = 0;
+  let usedRevisionOpportunityCount = 0;
+  let immediateRevealCount = 0;
+  let delayedRevealCount = 0;
+  let rememberedAttributionMatchCount = 0;
+  let rememberedAttributionMatchDenominator = 0;
+  let noCostInfoCount = 0;
+  let partialCostHintCount = 0;
+  let fullCostPreviewCount = 0;
+  let explainToSelfCount = 0;
+  let explainToOtherCount = 0;
+  let replayOfferedCount = 0;
+  let replayCompletedCount = 0;
+  let sameHiddenProfileCount = 0;
+  let switchedHiddenProfileCount = 0;
 
   for (const row of rows) {
     const payload = row.payload;
-    const hiddenProfile = readString(row.assignedHiddenProfile) || readString(getPath(payload, ["assignedProfile", "hiddenProfile"]));
+    const hiddenProfile =
+      readString(row.assignedHiddenProfile) ||
+      readString(getPath(payload, ["assignedProfile", "hiddenProfile"]));
 
     if (hiddenProfile === "High coverage") {
       highCoverageCount += 1;
@@ -133,12 +190,145 @@ export async function getAdminStats(): Promise<AdminStats> {
     }
 
     for (const key of AVERAGE_METRIC_KEYS) {
-      const value = readNumber(getPath(payload, ["computedMetrics", key]));
-      if (value !== null) {
-        averages[key].sum += value;
-        averages[key].count += 1;
+      addToAverage(
+        averages[key],
+        readNumber(getPath(payload, ["computedMetrics", key])),
+      );
+    }
+
+    const revisionCondition = readString(
+      getPath(payload, ["revisionAccess", "condition"]),
+    );
+    if (revisionCondition === "revision-unlocked") {
+      revisionUnlockedCount += 1;
+    } else if (revisionCondition === "revision-locked") {
+      revisionLockedCount += 1;
+    }
+
+    if (
+      readBoolean(
+        getPath(payload, ["computedMetrics", "attemptedPreRevealRevision"]),
+      ) ??
+      readBoolean(getPath(payload, ["preRevealRevision", "attempted"]))
+    ) {
+      attemptedRevisionCount += 1;
+    }
+
+    if (
+      readBoolean(
+        getPath(payload, ["computedMetrics", "usedRevisionOpportunity"]),
+      ) ??
+      readBoolean(getPath(payload, ["preRevealRevision", "used"]))
+    ) {
+      usedRevisionOpportunityCount += 1;
+    }
+
+    addToAverage(
+      revisionMagnitudeAverage,
+      readNumber(getPath(payload, ["computedMetrics", "revisionMagnitude"])),
+    );
+
+    const revealCondition = readString(
+      getPath(payload, ["revealTimingCondition", "condition"]),
+    );
+    if (revealCondition === "immediate-reveal") {
+      immediateRevealCount += 1;
+    } else if (revealCondition === "delayed-reveal") {
+      delayedRevealCount += 1;
+    }
+
+    addToAverage(
+      standByInitialInterpretationAverage,
+      readNumber(
+        getPath(payload, ["computedMetrics", "standByInitialInterpretation"]),
+      ) ??
+        readNumber(
+          getPath(payload, [
+            "preRevealCommitment",
+            "standByInitialInterpretation",
+          ]),
+        ),
+    );
+    addToAverage(
+      rememberedResponsibilityErrorAverage,
+      readNumber(
+        getPath(payload, ["computedMetrics", "rememberedResponsibilityError"]),
+      ),
+    );
+    addToAverage(
+      rememberedConstraintErrorAverage,
+      readNumber(
+        getPath(payload, [
+          "computedMetrics",
+          "rememberedConstraintSuspicionError",
+        ]),
+      ),
+    );
+
+    const rememberedAttributionMatch = readBoolean(
+      getPath(payload, [
+        "computedMetrics",
+        "rememberedPrimaryAttributionMatchesOriginal",
+      ]),
+    );
+    if (rememberedAttributionMatch !== null) {
+      rememberedAttributionMatchDenominator += 1;
+      if (rememberedAttributionMatch) {
+        rememberedAttributionMatchCount += 1;
       }
     }
+
+    const costVisibilityCondition =
+      readString(getPath(payload, ["costVisibilityCondition", "condition"])) ||
+      readString(
+        getPath(payload, ["computedMetrics", "costVisibilityCondition"]),
+      );
+    if (costVisibilityCondition === "no-cost-info") {
+      noCostInfoCount += 1;
+    } else if (costVisibilityCondition === "partial-cost-hint") {
+      partialCostHintCount += 1;
+    } else if (costVisibilityCondition === "full-cost-preview") {
+      fullCostPreviewCount += 1;
+    }
+
+    const explanationFrame =
+      readString(
+        getPath(payload, ["explanationFrameCondition", "condition"]),
+      ) ||
+      readString(getPath(payload, ["computedMetrics", "explanationFrame"]));
+    if (explanationFrame === "explain-to-self") {
+      explainToSelfCount += 1;
+    } else if (explanationFrame === "explain-to-other") {
+      explainToOtherCount += 1;
+    }
+
+    if (readBoolean(getPath(payload, ["computedMetrics", "replayAvailable"]))) {
+      replayOfferedCount += 1;
+    }
+
+    if (
+      readBoolean(getPath(payload, ["computedMetrics", "replayCompleted"])) ||
+      Boolean(getPath(payload, ["replayGame", "completedAt"]))
+    ) {
+      replayCompletedCount += 1;
+    }
+
+    const replayAssignmentCondition =
+      readString(
+        getPath(payload, ["computedMetrics", "replayAssignmentCondition"]),
+      ) || readString(getPath(payload, ["replayGame", "assignmentCondition"]));
+    if (replayAssignmentCondition === "same-hidden-profile") {
+      sameHiddenProfileCount += 1;
+    } else if (replayAssignmentCondition === "switched-hidden-profile") {
+      switchedHiddenProfileCount += 1;
+    }
+
+    addToAverage(
+      behaviorChangeCareAvoidanceAverage,
+      readNumber(
+        getPath(payload, ["computedMetrics", "behaviorChangeCareAvoidance"]),
+      ),
+    );
   }
 
   return {
@@ -151,14 +341,52 @@ export async function getAdminStats(): Promise<AdminStats> {
     averageBurden: average(averages.burden),
     averageCareAvoidance: average(averages.careAvoidance),
     averageResponsibilityShift: average(averages.responsibilityShift),
-    averageConstraintRecognitionShift: average(averages.constraintRecognitionShift),
+    averageConstraintRecognitionShift: average(
+      averages.constraintRecognitionShift,
+    ),
     averageProtestLegitimacyShift: average(averages.protestLegitimacyShift),
-    averageRuleCorrectionSupportShift: average(averages.ruleCorrectionSupportShift),
-    averageRedistributionSupportShift: average(averages.redistributionSupportShift),
+    averageRuleCorrectionSupportShift: average(
+      averages.ruleCorrectionSupportShift,
+    ),
+    averageRedistributionSupportShift: average(
+      averages.redistributionSupportShift,
+    ),
+    attemptedRevisionCount,
+    revisionUnlockedCount,
+    revisionLockedCount,
+    usedRevisionOpportunityCount,
+    averageRevisionMagnitude: average(revisionMagnitudeAverage),
+    immediateRevealCount,
+    delayedRevealCount,
+    averageStandByInitialInterpretation: average(
+      standByInitialInterpretationAverage,
+    ),
+    averageRememberedResponsibilityError: average(
+      rememberedResponsibilityErrorAverage,
+    ),
+    averageRememberedConstraintError: average(rememberedConstraintErrorAverage),
+    rememberedAttributionMatchPercentage: percentage(
+      rememberedAttributionMatchCount,
+      rememberedAttributionMatchDenominator,
+    ),
+    noCostInfoCount,
+    partialCostHintCount,
+    fullCostPreviewCount,
+    explainToSelfCount,
+    explainToOtherCount,
+    replayOfferedCount,
+    replayCompletedCount,
+    sameHiddenProfileCount,
+    switchedHiddenProfileCount,
+    averageBehaviorChangeCareAvoidance: average(
+      behaviorChangeCareAvoidanceAverage,
+    ),
   };
 }
 
-export async function listAllAdminSubmissions(): Promise<AdminSubmissionItem[]> {
+export async function listAllAdminSubmissions(): Promise<
+  AdminSubmissionItem[]
+> {
   assertDatabaseConfigured();
 
   const prisma = getPrismaClient();
@@ -192,10 +420,14 @@ export function adminSubmissionPageJson(page: AdminSubmissionPage) {
 }
 
 export function submissionsToCsv(items: AdminSubmissionItem[]): string {
-  const lines = [CSV_COLUMNS.map((column) => csvEscape(column.header)).join(",")];
+  const lines = [
+    CSV_COLUMNS.map((column) => csvEscape(column.header)).join(","),
+  ];
 
   for (const item of items) {
-    lines.push(CSV_COLUMNS.map((column) => csvEscape(column.read(item))).join(","));
+    lines.push(
+      CSV_COLUMNS.map((column) => csvEscape(column.read(item))).join(","),
+    );
   }
 
   return `${lines.join("\n")}\n`;
@@ -214,13 +446,17 @@ function parseLimit(rawLimit: string | null): number {
   return Math.min(parsed, MAX_LIMIT);
 }
 
-function parseCursor(rawCursor: string | null): { submittedAt: Date; id: string } | undefined {
+function parseCursor(
+  rawCursor: string | null,
+): { submittedAt: Date; id: string } | undefined {
   if (!rawCursor) {
     return undefined;
   }
 
   try {
-    const decoded = JSON.parse(Buffer.from(rawCursor, "base64url").toString("utf8")) as Partial<CursorPayload>;
+    const decoded = JSON.parse(
+      Buffer.from(rawCursor, "base64url").toString("utf8"),
+    ) as Partial<CursorPayload>;
     if (!decoded.submittedAt || !decoded.id) {
       throw new Error("Incomplete cursor.");
     }
@@ -236,13 +472,21 @@ function parseCursor(rawCursor: string | null): { submittedAt: Date; id: string 
   }
 }
 
-function encodeCursor(row: { submittedAt: string | Date; id: string } | undefined): string | undefined {
+function encodeCursor(
+  row: { submittedAt: string | Date; id: string } | undefined,
+): string | undefined {
   if (!row) {
     return undefined;
   }
 
-  const submittedAt = row.submittedAt instanceof Date ? row.submittedAt.toISOString() : row.submittedAt;
-  return Buffer.from(JSON.stringify({ submittedAt, id: row.id }), "utf8").toString("base64url");
+  const submittedAt =
+    row.submittedAt instanceof Date
+      ? row.submittedAt.toISOString()
+      : row.submittedAt;
+  return Buffer.from(
+    JSON.stringify({ submittedAt, id: row.id }),
+    "utf8",
+  ).toString("base64url");
 }
 
 const submissionSelect = {
@@ -293,84 +537,288 @@ const CSV_COLUMNS: CsvColumn[] = [
   dbColumn("assigned_displayed_profile", "assignedDisplayedProfile"),
   dbColumn("assigned_hidden_profile", "assignedHiddenProfile"),
   dbColumn("completed_game_rounds", "completedGameRounds"),
-  payloadColumn("reveal_timing_condition", ["revealTimingCondition", "condition"]),
-  payloadColumn("explanation_frame_condition", ["explanationFrameCondition", "condition"]),
-  payloadColumn("cost_visibility_condition", ["costVisibilityCondition", "condition"]),
-  payloadColumn("stand_by_initial_interpretation", ["preRevealCommitment", "standByInitialInterpretation"]),
-  payloadColumn("pre_reveal_commitment_text", ["preRevealCommitment", "explanationConfidenceText"]),
-  payloadColumn("final_financial_score", ["gameSummary", "finalFinancialScore"]),
+  payloadColumn("revision_condition", ["revisionAccess", "condition"]),
+  payloadColumn(
+    "attempted_pre_reveal_revision",
+    ["computedMetrics", "attemptedPreRevealRevision"],
+    ["preRevealRevision", "attempted"],
+  ),
+  payloadColumn(
+    "used_revision_opportunity",
+    ["computedMetrics", "usedRevisionOpportunity"],
+    ["preRevealRevision", "used"],
+  ),
+  payloadColumn("revision_magnitude", ["computedMetrics", "revisionMagnitude"]),
+  payloadColumn("reveal_timing_condition", [
+    "revealTimingCondition",
+    "condition",
+  ]),
+  payloadColumn("explanation_frame_condition", [
+    "explanationFrameCondition",
+    "condition",
+  ]),
+  payloadColumn("cost_visibility_condition", [
+    "costVisibilityCondition",
+    "condition",
+  ]),
+  payloadColumn("stand_by_initial_interpretation", [
+    "preRevealCommitment",
+    "standByInitialInterpretation",
+  ]),
+  payloadColumn("pre_reveal_commitment_text", [
+    "preRevealCommitment",
+    "explanationConfidenceText",
+  ]),
+  payloadColumn("final_financial_score", [
+    "gameSummary",
+    "finalFinancialScore",
+  ]),
   payloadColumn("final_health_score", ["gameSummary", "finalHealthScore"]),
-  payloadColumn("total_treatment_cost_paid", ["gameSummary", "totalTreatmentCostPaid"]),
+  payloadColumn("total_treatment_cost_paid", [
+    "gameSummary",
+    "totalTreatmentCostPaid",
+  ]),
   payloadColumn("total_income", ["gameSummary", "totalIncome"]),
-  payloadColumn("full_treatment_choices", ["gameSummary", "fullTreatmentChoices"]),
-  payloadColumn("partial_treatment_choices", ["gameSummary", "partialTreatmentChoices"]),
-  payloadColumn("skipped_treatment_choices", ["gameSummary", "skippedTreatmentChoices"]),
+  payloadColumn("full_treatment_choices", [
+    "gameSummary",
+    "fullTreatmentChoices",
+  ]),
+  payloadColumn("partial_treatment_choices", [
+    "gameSummary",
+    "partialTreatmentChoices",
+  ]),
+  payloadColumn("skipped_treatment_choices", [
+    "gameSummary",
+    "skippedTreatmentChoices",
+  ]),
   payloadColumn("burden", ["computedMetrics", "burden"]),
   payloadColumn("care_avoidance", ["computedMetrics", "careAvoidance"]),
   payloadColumn("replay_available", ["computedMetrics", "replayAvailable"]),
   payloadColumn("replay_completed", ["computedMetrics", "replayCompleted"]),
-  payloadColumn("replay_assignment_condition", ["computedMetrics", "replayAssignmentCondition"]),
-  payloadColumn("replay_hidden_profile", ["computedMetrics", "replayHiddenProfile"]),
-  payloadColumn("replay_full_treatment_choices", ["computedMetrics", "replayFullTreatmentChoices"]),
-  payloadColumn("replay_partial_treatment_choices", ["computedMetrics", "replayPartialTreatmentChoices"]),
-  payloadColumn("replay_skipped_treatment_choices", ["computedMetrics", "replaySkippedTreatmentChoices"]),
-  payloadColumn("replay_final_financial_score", ["computedMetrics", "replayFinalFinancialScore"]),
-  payloadColumn("replay_final_health_score", ["computedMetrics", "replayFinalHealthScore"]),
-  payloadColumn("replay_total_treatment_cost_paid", ["computedMetrics", "replayTotalTreatmentCostPaid"]),
-  payloadColumn("replay_care_avoidance", ["computedMetrics", "replayCareAvoidance"]),
-  payloadColumn("behavior_change_full_treatment", ["computedMetrics", "behaviorChangeFullTreatment"]),
-  payloadColumn("behavior_change_partial_treatment", ["computedMetrics", "behaviorChangePartialTreatment"]),
-  payloadColumn("behavior_change_skipped_treatment", ["computedMetrics", "behaviorChangeSkippedTreatment"]),
-  payloadColumn("behavior_change_care_avoidance", ["computedMetrics", "behaviorChangeCareAvoidance"]),
-  payloadColumn("behavior_change_cost_burden", ["computedMetrics", "behaviorChangeCostBurden"]),
-  payloadColumn("metric_cost_visibility_condition", ["computedMetrics", "costVisibilityCondition"]),
+  payloadColumn("replay_assignment_condition", [
+    "computedMetrics",
+    "replayAssignmentCondition",
+  ]),
+  payloadColumn("replay_hidden_profile", [
+    "computedMetrics",
+    "replayHiddenProfile",
+  ]),
+  payloadColumn("replay_full_treatment_choices", [
+    "computedMetrics",
+    "replayFullTreatmentChoices",
+  ]),
+  payloadColumn("replay_partial_treatment_choices", [
+    "computedMetrics",
+    "replayPartialTreatmentChoices",
+  ]),
+  payloadColumn("replay_skipped_treatment_choices", [
+    "computedMetrics",
+    "replaySkippedTreatmentChoices",
+  ]),
+  payloadColumn("replay_final_financial_score", [
+    "computedMetrics",
+    "replayFinalFinancialScore",
+  ]),
+  payloadColumn("replay_final_health_score", [
+    "computedMetrics",
+    "replayFinalHealthScore",
+  ]),
+  payloadColumn("replay_total_treatment_cost_paid", [
+    "computedMetrics",
+    "replayTotalTreatmentCostPaid",
+  ]),
+  payloadColumn("replay_care_avoidance", [
+    "computedMetrics",
+    "replayCareAvoidance",
+  ]),
+  payloadColumn("behavior_change_full_treatment", [
+    "computedMetrics",
+    "behaviorChangeFullTreatment",
+  ]),
+  payloadColumn("behavior_change_partial_treatment", [
+    "computedMetrics",
+    "behaviorChangePartialTreatment",
+  ]),
+  payloadColumn("behavior_change_skipped_treatment", [
+    "computedMetrics",
+    "behaviorChangeSkippedTreatment",
+  ]),
+  payloadColumn("behavior_change_care_avoidance", [
+    "computedMetrics",
+    "behaviorChangeCareAvoidance",
+  ]),
+  payloadColumn("behavior_change_cost_burden", [
+    "computedMetrics",
+    "behaviorChangeCostBurden",
+  ]),
+  payloadColumn("metric_cost_visibility_condition", [
+    "computedMetrics",
+    "costVisibilityCondition",
+  ]),
   payloadColumn("had_any_cost_hint", ["computedMetrics", "hadAnyCostHint"]),
-  payloadColumn("had_strong_cost_hint", ["computedMetrics", "hadStrongCostHint"]),
-  payloadColumn("responsibility_shift", ["computedMetrics", "responsibilityShift"]),
-  payloadColumn("constraint_recognition_shift", ["computedMetrics", "constraintRecognitionShift"]),
-  payloadColumn("protest_legitimacy_shift", ["computedMetrics", "protestLegitimacyShift"]),
-  payloadColumn("rule_correction_support_shift", ["computedMetrics", "ruleCorrectionSupportShift"]),
-  payloadColumn("redistribution_support_shift", ["computedMetrics", "redistributionSupportShift"]),
-  payloadColumn("certainty_correction", ["computedMetrics", "certaintyCorrection"]),
-  payloadColumn("information_caution", ["computedMetrics", "informationCaution"]),
+  payloadColumn("had_strong_cost_hint", [
+    "computedMetrics",
+    "hadStrongCostHint",
+  ]),
+  payloadColumn("responsibility_shift", [
+    "computedMetrics",
+    "responsibilityShift",
+  ]),
+  payloadColumn("constraint_recognition_shift", [
+    "computedMetrics",
+    "constraintRecognitionShift",
+  ]),
+  payloadColumn("protest_legitimacy_shift", [
+    "computedMetrics",
+    "protestLegitimacyShift",
+  ]),
+  payloadColumn("rule_correction_support_shift", [
+    "computedMetrics",
+    "ruleCorrectionSupportShift",
+  ]),
+  payloadColumn("redistribution_support_shift", [
+    "computedMetrics",
+    "redistributionSupportShift",
+  ]),
+  payloadColumn("certainty_correction", [
+    "computedMetrics",
+    "certaintyCorrection",
+  ]),
+  payloadColumn("information_caution", [
+    "computedMetrics",
+    "informationCaution",
+  ]),
   payloadColumn("perspective_change", ["computedMetrics", "perspectiveChange"]),
-  payloadColumn("remembered_responsibility_error", ["computedMetrics", "rememberedResponsibilityError"]),
-  payloadColumn("remembered_constraint_suspicion_error", ["computedMetrics", "rememberedConstraintSuspicionError"]),
-  payloadColumn("remembered_primary_attribution_matches_original", ["computedMetrics", "rememberedPrimaryAttributionMatchesOriginal"]),
+  payloadColumn("remembered_responsibility_error", [
+    "computedMetrics",
+    "rememberedResponsibilityError",
+  ]),
+  payloadColumn("remembered_constraint_suspicion_error", [
+    "computedMetrics",
+    "rememberedConstraintSuspicionError",
+  ]),
+  payloadColumn("remembered_primary_attribution_matches_original", [
+    "computedMetrics",
+    "rememberedPrimaryAttributionMatchesOriginal",
+  ]),
   payloadColumn("memory_confidence", ["computedMetrics", "memoryConfidence"]),
-  payloadColumn("memory_distortion_magnitude", ["computedMetrics", "memoryDistortionMagnitude"]),
-  payloadColumn("pre_primary_attribution", ["preRevealSurvey", "primaryAttribution"]),
-  payloadColumn("remembered_primary_attribution", ["postRevealSurvey", "rememberedPrimaryAttribution"]),
-  payloadColumn("post_revised_primary_attribution", ["postRevealSurvey", "revisedPrimaryAttribution"]),
-  payloadColumn("pre_individual_responsibility", ["preRevealSurvey", "individualResponsibility"]),
-  payloadColumn("post_revised_individual_responsibility", ["postRevealSurvey", "revisedIndividualResponsibility"]),
-  payloadColumn("remembered_individual_responsibility", ["postRevealSurvey", "rememberedIndividualResponsibility"]),
-  payloadColumn("pre_constraint_suspicion", ["preRevealSurvey", "constraintSuspicion"]),
-  payloadColumn("post_perceived_structural_impact", ["postRevealSurvey", "perceivedStructuralImpact"]),
-  payloadColumn("remembered_constraint_suspicion", ["postRevealSurvey", "rememberedConstraintSuspicion"]),
-  payloadColumn("pre_protest_legitimacy", ["preRevealSurvey", "protestLegitimacy"]),
-  payloadColumn("post_protest_legitimacy", ["postRevealSurvey", "postProtestLegitimacy"]),
-  payloadColumn("pre_rule_correction_support", ["preRevealSurvey", "ruleCorrectionSupport"]),
-  payloadColumn("post_rule_correction_support", ["postRevealSurvey", "postRuleCorrectionSupport"]),
-  payloadColumn("pre_redistribution_support", ["preRevealSurvey", "redistributionSupport"]),
-  payloadColumn("post_redistribution_support", ["postRevealSurvey", "postRedistributionSupport"]),
+  payloadColumn("memory_distortion_magnitude", [
+    "computedMetrics",
+    "memoryDistortionMagnitude",
+  ]),
+  payloadColumn("pre_primary_attribution", [
+    "preRevealSurvey",
+    "primaryAttribution",
+  ]),
+  payloadColumn("remembered_primary_attribution", [
+    "postRevealSurvey",
+    "rememberedPrimaryAttribution",
+  ]),
+  payloadColumn("post_revised_primary_attribution", [
+    "postRevealSurvey",
+    "revisedPrimaryAttribution",
+  ]),
+  payloadColumn("pre_individual_responsibility", [
+    "preRevealSurvey",
+    "individualResponsibility",
+  ]),
+  payloadColumn("post_revised_individual_responsibility", [
+    "postRevealSurvey",
+    "revisedIndividualResponsibility",
+  ]),
+  payloadColumn("remembered_individual_responsibility", [
+    "postRevealSurvey",
+    "rememberedIndividualResponsibility",
+  ]),
+  payloadColumn("pre_constraint_suspicion", [
+    "preRevealSurvey",
+    "constraintSuspicion",
+  ]),
+  payloadColumn("post_perceived_structural_impact", [
+    "postRevealSurvey",
+    "perceivedStructuralImpact",
+  ]),
+  payloadColumn("remembered_constraint_suspicion", [
+    "postRevealSurvey",
+    "rememberedConstraintSuspicion",
+  ]),
+  payloadColumn("pre_protest_legitimacy", [
+    "preRevealSurvey",
+    "protestLegitimacy",
+  ]),
+  payloadColumn("post_protest_legitimacy", [
+    "postRevealSurvey",
+    "postProtestLegitimacy",
+  ]),
+  payloadColumn("pre_rule_correction_support", [
+    "preRevealSurvey",
+    "ruleCorrectionSupport",
+  ]),
+  payloadColumn("post_rule_correction_support", [
+    "postRevealSurvey",
+    "postRuleCorrectionSupport",
+  ]),
+  payloadColumn("pre_redistribution_support", [
+    "preRevealSurvey",
+    "redistributionSupport",
+  ]),
+  payloadColumn("post_redistribution_support", [
+    "postRevealSurvey",
+    "postRedistributionSupport",
+  ]),
   payloadColumn("pre_confidence", ["preRevealSurvey", "confidence"]),
-  payloadColumn("remembered_confidence", ["postRevealSurvey", "rememberedConfidence"]),
-  payloadColumn("post_initial_judgment_accuracy", ["postRevealSurvey", "initialJudgmentAccuracy"]),
-  payloadColumn("pre_information_sufficiency", ["preRevealSurvey", "informationSufficiency"]),
-  payloadColumn("post_perspective_change", ["postRevealSurvey", "perspectiveChange"]),
+  payloadColumn("remembered_confidence", [
+    "postRevealSurvey",
+    "rememberedConfidence",
+  ]),
+  payloadColumn("post_initial_judgment_accuracy", [
+    "postRevealSurvey",
+    "initialJudgmentAccuracy",
+  ]),
+  payloadColumn("pre_information_sufficiency", [
+    "preRevealSurvey",
+    "informationSufficiency",
+  ]),
+  payloadColumn("post_perspective_change", [
+    "postRevealSurvey",
+    "perspectiveChange",
+  ]),
   payloadColumn("pre_open_explanation", ["preRevealSurvey", "openExplanation"]),
   payloadColumn("post_open_revision", ["postRevealSurvey", "openRevision"]),
   payloadColumn("background_age_group", ["participantProfile", "ageGroup"]),
   payloadColumn("background_gender", ["participantProfile", "gender"]),
-  payloadColumn("background_subjective_economic_status", ["participantProfile", "subjectiveEconomicStatus"]),
-  payloadColumn("background_medical_cost_pressure", ["participantProfile", "medicalCostPressure"]),
-  payloadColumn("background_healthcare_coverage", ["participantProfile", "healthcareCoverage"]),
-  payloadColumn("background_special_organizational_coverage", ["participantProfile", "specialOrganizationalCoverage"]),
-  payloadColumn("background_prior_exposure_to_unequal_systems", ["participantProfile", "priorExposureToUnequalSystems"]),
-  payloadColumn("background_policy_preference_baseline", ["participantProfile", "policyPreferenceBaseline"]),
-  payloadColumn("background_inequality_orientation", ["participantProfile", "inequalityOrientation"]),
-  payloadColumn("background_institutional_trust", ["participantProfile", "institutionalTrust"]),
+  payloadColumn("background_subjective_economic_status", [
+    "participantProfile",
+    "subjectiveEconomicStatus",
+  ]),
+  payloadColumn("background_medical_cost_pressure", [
+    "participantProfile",
+    "medicalCostPressure",
+  ]),
+  payloadColumn("background_healthcare_coverage", [
+    "participantProfile",
+    "healthcareCoverage",
+  ]),
+  payloadColumn("background_special_organizational_coverage", [
+    "participantProfile",
+    "specialOrganizationalCoverage",
+  ]),
+  payloadColumn("background_prior_exposure_to_unequal_systems", [
+    "participantProfile",
+    "priorExposureToUnequalSystems",
+  ]),
+  payloadColumn("background_policy_preference_baseline", [
+    "participantProfile",
+    "policyPreferenceBaseline",
+  ]),
+  payloadColumn("background_inequality_orientation", [
+    "participantProfile",
+    "inequalityOrientation",
+  ]),
+  payloadColumn("background_institutional_trust", [
+    "participantProfile",
+    "institutionalTrust",
+  ]),
 ];
 
 function dbColumn(header: string, key: keyof AdminSubmissionItem): CsvColumn {
@@ -380,18 +828,40 @@ function dbColumn(header: string, key: keyof AdminSubmissionItem): CsvColumn {
   };
 }
 
-function payloadColumn(header: string, path: string[]): CsvColumn {
+function payloadColumn(
+  header: string,
+  path: string[],
+  fallbackPath?: string[],
+): CsvColumn {
   return {
     header,
-    read: (item) => getPath(item.payload, path),
+    read: (item) => {
+      const value = getPath(item.payload, path);
+      return value === "" && fallbackPath
+        ? getPath(item.payload, fallbackPath)
+        : value;
+    },
   };
 }
 
 function createAverageAccumulator(): AverageAccumulator {
   return AVERAGE_METRIC_KEYS.reduce((accumulator, key) => {
-    accumulator[key] = { sum: 0, count: 0 };
+    accumulator[key] = createNumberAccumulator();
     return accumulator;
   }, {} as AverageAccumulator);
+}
+
+function createNumberAccumulator(): NumberAccumulator {
+  return { sum: 0, count: 0 };
+}
+
+function addToAverage(metric: NumberAccumulator, value: number | null) {
+  if (value === null) {
+    return;
+  }
+
+  metric.sum += value;
+  metric.count += 1;
 }
 
 function average(metric: { sum: number; count: number }): number {
@@ -402,12 +872,24 @@ function average(metric: { sum: number; count: number }): number {
   return roundMetric(metric.sum / metric.count);
 }
 
+function percentage(numerator: number, denominator: number): number {
+  if (denominator === 0) {
+    return 0;
+  }
+
+  return roundMetric((numerator / denominator) * 100);
+}
+
 function roundMetric(value: number): number {
   return Math.round(value * 1000) / 1000;
 }
 
 function readNumber(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function readBoolean(value: unknown): boolean | null {
+  return typeof value === "boolean" ? value : null;
 }
 
 function readString(value: unknown): string {
@@ -428,7 +910,9 @@ function getPath(value: Prisma.JsonValue, path: string[]): unknown {
   return current ?? "";
 }
 
-function isJsonObject(value: unknown): value is Record<string, Prisma.JsonValue> {
+function isJsonObject(
+  value: unknown,
+): value is Record<string, Prisma.JsonValue> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
@@ -437,7 +921,8 @@ function csvEscape(value: unknown): string {
     return "";
   }
 
-  const stringValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+  const stringValue =
+    typeof value === "object" ? JSON.stringify(value) : String(value);
   if (!/[",\n\r]/.test(stringValue)) {
     return stringValue;
   }
