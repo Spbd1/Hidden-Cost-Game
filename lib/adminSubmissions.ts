@@ -294,6 +294,7 @@ const CSV_COLUMNS: CsvColumn[] = [
   dbColumn("assigned_hidden_profile", "assignedHiddenProfile"),
   dbColumn("completed_game_rounds", "completedGameRounds"),
   payloadColumn("reveal_timing_condition", ["revealTimingCondition", "condition"]),
+  payloadColumn("explanation_frame_condition", ["explanationFrameCondition", "condition"]),
   payloadColumn("stand_by_initial_interpretation", ["preRevealCommitment", "standByInitialInterpretation"]),
   payloadColumn("pre_reveal_commitment_text", ["preRevealCommitment", "explanationConfidenceText"]),
   payloadColumn("final_financial_score", ["gameSummary", "finalFinancialScore"]),

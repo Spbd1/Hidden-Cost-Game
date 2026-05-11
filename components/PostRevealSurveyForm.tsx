@@ -5,7 +5,7 @@ import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/Card";
 import { HelperNote, LikertQuestion, PrimaryButton, SingleChoiceQuestion, TextQuestion } from "@/components/FormControls";
-import { getStoredSession, saveStoredSession } from "@/utils/session";
+import { assignExplanationFrameCondition, getStoredSession, saveStoredSession } from "@/utils/session";
 import type { PostRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
 const rememberedPrimaryAttributionOptions = [
@@ -24,6 +24,11 @@ const revisedPrimaryAttributionOptions = [
   "Random variation or luck may also have mattered",
   "I am still unsure",
 ];
+
+const explanationFrameQuestionText = {
+  "explain-to-self": "In one or two sentences, explain to yourself how the hidden cost rule changed, confirmed, or complicated your interpretation.",
+  "explain-to-other": "Imagine explaining this result to another participant who only saw the score table. In one or two sentences, explain how the hidden cost rule changes, confirms, or complicates the interpretation.",
+} satisfies Record<NonNullable<ResearchSession["explanationFrameCondition"]>["condition"], string>;
 
 const initialAnswers: PostRevealSurveyAnswers = {
   rememberedPrimaryAttribution: "",
@@ -61,10 +66,11 @@ export function PostRevealSurveyForm() {
     }
 
     const now = new Date().toISOString();
+    const assignedSession = assignExplanationFrameCondition(storedSession);
     const nextSession: ResearchSession = {
-      ...storedSession,
+      ...assignedSession,
       currentStage: "post-reveal",
-      postRevealSurveyStartedAt: storedSession.postRevealSurveyStartedAt ?? now,
+      postRevealSurveyStartedAt: assignedSession.postRevealSurveyStartedAt ?? now,
     };
 
     saveStoredSession(nextSession);
@@ -73,15 +79,19 @@ export function PostRevealSurveyForm() {
   }, [router]);
 
   useEffect(() => {
-    if (!session) {
-      return;
-    }
+    setSession((currentSession) => {
+      if (!currentSession) {
+        return currentSession;
+      }
 
-    const updatedSession = { ...session, postRevealSurvey: answers };
-    saveStoredSession(updatedSession);
-    setSession(updatedSession);
+      const updatedSession = { ...currentSession, postRevealSurvey: answers };
+      saveStoredSession(updatedSession);
+      return updatedSession;
+    });
   }, [answers]);
 
+  const explanationFrame = session?.explanationFrameCondition?.condition ?? "explain-to-self";
+  const openRevisionQuestion = explanationFrameQuestionText[explanationFrame];
   const openLength = answers.openRevision.trim().length;
   const isComplete =
     answers.rememberedPrimaryAttribution.length > 0 &&
@@ -161,7 +171,7 @@ export function PostRevealSurveyForm() {
         <LikertQuestion name="initialJudgmentAccuracy" legend="11. Looking back, how accurate does your initial interpretation seem now?" leftLabel="Not accurate at all" rightLabel="Very accurate" value={answers.initialJudgmentAccuracy} onChange={(value) => updateAnswer("initialJudgmentAccuracy", value)} />
         <LikertQuestion name="perspectiveChange" legend="12. How much did the reveal change how you view the lower-scoring players?" leftLabel="Did not change at all" rightLabel="Changed a lot" value={answers.perspectiveChange} onChange={(value) => updateAnswer("perspectiveChange", value)} />
 
-        <TextQuestion label="13. In one or two sentences, describe how the reveal changed, confirmed, or complicated your interpretation." value={answers.openRevision} onChange={(value) => updateAnswer("openRevision", value)} minLength={10} maxLength={500} />
+        <TextQuestion label={`13. ${openRevisionQuestion}`} value={answers.openRevision} onChange={(value) => updateAnswer("openRevision", value)} minLength={10} maxLength={500} />
 
         {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all closed-ended items and write 10–500 characters in the revision. Your draft has been saved in this browser.</HelperNote> : null}
 

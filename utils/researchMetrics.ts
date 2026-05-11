@@ -13,7 +13,7 @@ import type {
 } from "@/types/research";
 
 export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-3";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-4";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -106,6 +106,7 @@ export function calculateComputedResearchMetrics({
   preRevealRevision,
   revealTimingCondition,
   preRevealCommitment,
+  explanationFrameCondition,
 }: {
   game: HiddenCostGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
@@ -116,6 +117,7 @@ export function calculateComputedResearchMetrics({
   preRevealRevision?: ResearchSession["preRevealRevision"];
   revealTimingCondition?: ResearchSession["revealTimingCondition"];
   preRevealCommitment?: ResearchSession["preRevealCommitment"];
+  explanationFrameCondition?: ResearchSession["explanationFrameCondition"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
   const originalPreRevealSurvey = preRevealSurveyOriginal ?? preRevealSurvey;
@@ -158,6 +160,7 @@ export function calculateComputedResearchMetrics({
     rememberedPrimaryAttributionMatchesOriginal: postRevealSurvey.rememberedPrimaryAttribution === originalPreRevealSurvey.primaryAttribution,
     memoryConfidence: postRevealSurvey.rememberedConfidence,
     memoryDistortionMagnitude: roundMetric(memoryDistortionMagnitude),
+    explanationFrame: explanationFrameCondition?.condition ?? null,
     attributionCategoryShift: {
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,
@@ -255,6 +258,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     preRevealRevision: session.preRevealRevision,
     revealTimingCondition: session.revealTimingCondition,
     preRevealCommitment: session.preRevealCommitment,
+    explanationFrameCondition: session.explanationFrameCondition,
   });
 
   return {
@@ -275,6 +279,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     participantProfile: session.participantProfile,
     ...(session.revealTimingCondition ? { revealTimingCondition: session.revealTimingCondition } : {}),
     ...(session.preRevealCommitment ? { preRevealCommitment: session.preRevealCommitment } : {}),
+    ...(session.explanationFrameCondition ? { explanationFrameCondition: session.explanationFrameCondition } : {}),
     assignedProfile: {
       displayedProfile: session.game.displayedProfile,
       hiddenProfile: session.game.hiddenProfile,

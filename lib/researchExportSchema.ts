@@ -11,6 +11,7 @@ const medicalRiskLevelSchema = z.enum(["low", "medium", "high"]);
 const serverSubmissionStatusSchema = z.enum(["not_enabled", "not_submitted", "submitting", "submitted", "failed"]);
 const revisionAccessConditionSchema = z.enum(["revision-unlocked", "revision-locked"]);
 const revealTimingConditionNameSchema = z.enum(["immediate-reveal", "delayed-reveal"]);
+const explanationFrameConditionNameSchema = z.enum(["explain-to-self", "explain-to-other"]);
 
 export const revisionAccessSchema = z
   .object({
@@ -44,6 +45,13 @@ export const preRevealCommitmentSchema = z
     standByInitialInterpretation: likertSchema,
     explanationConfidenceText: z.string().trim().max(500).optional(),
     completedAt: isoDateStringSchema,
+  })
+  .passthrough();
+
+export const explanationFrameConditionSchema = z
+  .object({
+    condition: explanationFrameConditionNameSchema,
+    assignedAt: isoDateStringSchema,
   })
   .passthrough();
 
@@ -157,6 +165,7 @@ export const computedMetricsSchema = z
     rememberedPrimaryAttributionMatchesOriginal: z.boolean(),
     memoryConfidence: likertSchema,
     memoryDistortionMagnitude: z.number().nonnegative(),
+    explanationFrame: explanationFrameConditionNameSchema.nullable(),
     attributionCategoryShift: z
       .object({
         pre: z.string().min(1),
@@ -203,6 +212,7 @@ export const researchExportSchema = z
     sessionCreatedAt: isoDateStringSchema.optional(),
     revealTimingCondition: revealTimingConditionSchema.optional(),
     preRevealCommitment: preRevealCommitmentSchema.optional(),
+    explanationFrameCondition: explanationFrameConditionSchema.optional(),
     assignedProfile: assignedProfileSchema,
     gameSummary: gameSummarySchema,
     gameRounds: z.array(gameRoundSchema).min(1),
