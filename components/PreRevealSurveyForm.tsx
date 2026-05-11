@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
 import { HelperNote, LikertQuestion, PrimaryButton, SingleChoiceQuestion, TextQuestion } from "@/components/FormControls";
-import { getStoredSession, saveStoredSession } from "@/utils/session";
+import { assignPreRevealRevisionAccess, getStoredSession, saveStoredSession } from "@/utils/session";
 import type { PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
 const primaryAttributionOptions = [
@@ -28,11 +29,16 @@ const initialAnswers: PreRevealSurveyAnswers = {
   openExplanation: "",
 };
 
+type RevisionMode = "pre-reveal" | "revision-unlocked" | "revision-locked";
+
 export function PreRevealSurveyForm() {
   const router = useRouter();
   const [session, setSession] = useState<ResearchSession | null>(null);
+  const sessionRef = useRef<ResearchSession | null>(null);
+  const autosaveReadyRef = useRef(false);
   const [answers, setAnswers] = useState<PreRevealSurveyAnswers>(initialAnswers);
   const [showValidation, setShowValidation] = useState(false);
+  const [revisionMode, setRevisionMode] = useState<RevisionMode>("pre-reveal");
 
   useEffect(() => {
     const storedSession = getStoredSession("pre-reveal");
@@ -45,26 +51,61 @@ export function PreRevealSurveyForm() {
     }
 
     const now = new Date().toISOString();
+    const accessSession = storedSession.revealViewedAt ? assignPreRevealRevisionAccess(storedSession) : storedSession;
+    const mode: RevisionMode = accessSession.revealViewedAt && accessSession.revisionAccess?.condition ? accessSession.revisionAccess.condition : "pre-reveal";
     const nextSession: ResearchSession = {
-      ...storedSession,
+      ...accessSession,
       currentStage: "pre-reveal",
-      preRevealSurveyStartedAt: storedSession.preRevealSurveyStartedAt ?? now,
+      preRevealSurveyStartedAt: accessSession.preRevealSurveyStartedAt ?? now,
+      ...(mode === "revision-unlocked"
+        ? {
+            preRevealRevision: {
+              attempted: true,
+              allowed: true,
+              used: accessSession.preRevealRevision?.used ?? false,
+              firstAttemptedAt: accessSession.preRevealRevision?.firstAttemptedAt ?? now,
+              revisedAt: accessSession.preRevealRevision?.revisedAt,
+              blockedAt: accessSession.preRevealRevision?.blockedAt,
+            },
+          }
+        : {}),
+      ...(mode === "revision-locked"
+        ? {
+            preRevealRevision: {
+              attempted: true,
+              allowed: false,
+              used: false,
+              firstAttemptedAt: accessSession.preRevealRevision?.firstAttemptedAt ?? now,
+              revisedAt: accessSession.preRevealRevision?.revisedAt,
+              blockedAt: now,
+            },
+          }
+        : {}),
     };
 
     saveStoredSession(nextSession);
+    setRevisionMode(mode);
+    sessionRef.current = nextSession;
     setSession(nextSession);
     setAnswers(nextSession.preRevealSurvey ?? initialAnswers);
   }, [router]);
 
   useEffect(() => {
-    if (!session) {
+    const currentSession = sessionRef.current;
+
+    if (!autosaveReadyRef.current) {
+      autosaveReadyRef.current = true;
       return;
     }
 
-    const updatedSession = { ...session, preRevealSurvey: answers };
+    if (!currentSession || revisionMode !== "pre-reveal") {
+      return;
+    }
+
+    const updatedSession = { ...currentSession, preRevealSurvey: answers };
+    sessionRef.current = updatedSession;
     saveStoredSession(updatedSession);
-    setSession(updatedSession);
-  }, [answers]);
+  }, [answers, revisionMode]);
 
   const openLength = answers.openExplanation.trim().length;
   const isComplete =
@@ -90,28 +131,66 @@ export function PreRevealSurveyForm() {
     event.preventDefault();
     setShowValidation(true);
 
-    if (!session || !isComplete) {
+    if (!session || !isComplete || revisionMode === "revision-locked") {
       return;
     }
 
-    const updatedSession: ResearchSession = {
-      ...session,
-      currentStage: "reveal",
-      preRevealSurveyCompletedAt: new Date().toISOString(),
-      preRevealSurvey: {
-        ...answers,
-        openExplanation: answers.openExplanation.trim(),
-      },
+    const submittedAnswers: PreRevealSurveyAnswers = {
+      ...answers,
+      openExplanation: answers.openExplanation.trim(),
     };
+    const now = new Date().toISOString();
+    const updatedSession: ResearchSession =
+      revisionMode === "revision-unlocked"
+        ? {
+            ...session,
+            currentStage: "post-reveal",
+            preRevealSurvey: submittedAnswers,
+            preRevealSurveyOriginal: session.preRevealSurveyOriginal ?? session.preRevealSurvey,
+            preRevealSurveyRevisedAfterReveal: submittedAnswers,
+            preRevealRevision: {
+              attempted: true,
+              allowed: true,
+              used: true,
+              firstAttemptedAt: session.preRevealRevision?.firstAttemptedAt ?? now,
+              revisedAt: now,
+              blockedAt: session.preRevealRevision?.blockedAt,
+            },
+          }
+        : {
+            ...session,
+            currentStage: "reveal",
+            preRevealSurveyCompletedAt: now,
+            preRevealSurvey: submittedAnswers,
+            preRevealSurveyOriginal: session.preRevealSurveyOriginal ?? submittedAnswers,
+          };
 
     saveStoredSession(updatedSession);
-    router.push("/hidden-rule-reveal");
+    router.push(revisionMode === "revision-unlocked" ? "/post-reveal-survey" : "/hidden-rule-reveal");
+  }
+
+  if (revisionMode === "revision-locked") {
+    return (
+      <Card className="space-y-6">
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold text-ink">Responses already recorded</h2>
+          <p className="leading-7 text-slate-600">Your initial answers have already been recorded and cannot be changed at this stage. Please continue with the study.</p>
+        </div>
+        <div className="flex justify-end border-t border-slate-200 pt-6">
+          <ButtonLink href="/post-reveal-survey">Continue to post-reveal survey</ButtonLink>
+        </div>
+      </Card>
+    );
   }
 
   return (
     <Card>
       <form onSubmit={handleSubmit} className="space-y-8">
-        <HelperNote tone="neutral">Please answer based only on the visible score table. Some information may not yet be available, and there are no right or wrong answers.</HelperNote>
+        {revisionMode === "revision-unlocked" ? (
+          <HelperNote tone="neutral">You are reviewing your earlier answers after seeing additional information. Your original answers will still be preserved for research analysis.</HelperNote>
+        ) : (
+          <HelperNote tone="neutral">Please answer based only on the visible score table. Some information may not yet be available, and there are no right or wrong answers.</HelperNote>
+        )}
 
         <SingleChoiceQuestion
           legend="1. Based only on the results shown so far, what do you think most likely explains why some players ended with lower scores?"
@@ -134,7 +213,7 @@ export function PreRevealSurveyForm() {
         {showValidation && !isComplete ? <HelperNote tone="warning">Please answer all closed-ended items and write 10–500 characters in the explanation. Your draft has been saved in this browser.</HelperNote> : null}
 
         <div className="flex justify-end border-t border-slate-200 pt-6">
-          <PrimaryButton>Continue to debrief</PrimaryButton>
+          <PrimaryButton>{revisionMode === "revision-unlocked" ? "Submit reviewed answers" : "Continue to debrief"}</PrimaryButton>
         </div>
       </form>
     </Card>

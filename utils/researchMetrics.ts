@@ -96,12 +96,37 @@ export function calculateComputedResearchMetrics({
   game,
   preRevealSurvey,
   postRevealSurvey,
+  preRevealSurveyOriginal,
+  preRevealSurveyRevisedAfterReveal,
+  revisionAccess,
+  preRevealRevision,
 }: {
   game: HiddenCostGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
   postRevealSurvey: PostRevealSurveyAnswers;
+  preRevealSurveyOriginal?: PreRevealSurveyAnswers;
+  preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
+  revisionAccess?: ResearchSession["revisionAccess"];
+  preRevealRevision?: ResearchSession["preRevealRevision"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
+  const responsibilityRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.individualResponsibility - preRevealSurveyOriginal.individualResponsibility : undefined;
+  const constraintSuspicionRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.constraintSuspicion - preRevealSurveyOriginal.constraintSuspicion : undefined;
+  const protestLegitimacyRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.protestLegitimacy - preRevealSurveyOriginal.protestLegitimacy : undefined;
+  const ruleCorrectionRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.ruleCorrectionSupport - preRevealSurveyOriginal.ruleCorrectionSupport : undefined;
+  const redistributionRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.redistributionSupport - preRevealSurveyOriginal.redistributionSupport : undefined;
+  const confidenceRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.confidence - preRevealSurveyOriginal.confidence : undefined;
+  const informationSufficiencyRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.informationSufficiency - preRevealSurveyOriginal.informationSufficiency : undefined;
+  const revisionDeltas = [
+    responsibilityRevisionDelta,
+    constraintSuspicionRevisionDelta,
+    protestLegitimacyRevisionDelta,
+    ruleCorrectionRevisionDelta,
+    redistributionRevisionDelta,
+    confidenceRevisionDelta,
+    informationSufficiencyRevisionDelta,
+  ];
+  const hasRevisionComparison = revisionDeltas.every((delta): delta is number => typeof delta === "number");
 
   return {
     responsibilityShift: postRevealSurvey.revisedIndividualResponsibility - preRevealSurvey.individualResponsibility,
@@ -118,6 +143,22 @@ export function calculateComputedResearchMetrics({
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,
     },
+    ...(hasRevisionComparison
+      ? {
+          usedRevisionOpportunity: Boolean(preRevealRevision?.used),
+          revisionUnlocked: revisionAccess ? revisionAccess.condition === "revision-unlocked" : null,
+          attemptedPreRevealRevision: Boolean(preRevealRevision?.attempted),
+          responsibilityRevisionDelta,
+          constraintSuspicionRevisionDelta,
+          protestLegitimacyRevisionDelta,
+          ruleCorrectionRevisionDelta,
+          redistributionRevisionDelta,
+          confidenceRevisionDelta,
+          informationSufficiencyRevisionDelta,
+          changedPrimaryAttribution: preRevealSurveyRevisedAfterReveal?.primaryAttribution !== preRevealSurveyOriginal?.primaryAttribution,
+          revisionMagnitude: roundMetric(revisionDeltas.reduce((total, delta) => total + Math.abs(delta), 0)),
+        }
+      : {}),
   };
 }
 
@@ -189,6 +230,10 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     game: session.game,
     preRevealSurvey: session.preRevealSurvey,
     postRevealSurvey: session.postRevealSurvey,
+    preRevealSurveyOriginal: session.preRevealSurveyOriginal,
+    preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal,
+    revisionAccess: session.revisionAccess,
+    preRevealRevision: session.preRevealRevision,
   });
 
   return {
@@ -215,6 +260,10 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     gameSummary,
     gameRounds: session.game.rounds,
     preRevealSurvey: session.preRevealSurvey,
+    ...(session.preRevealSurveyOriginal ? { preRevealSurveyOriginal: session.preRevealSurveyOriginal } : {}),
+    ...(session.preRevealSurveyRevisedAfterReveal ? { preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal } : {}),
+    ...(session.revisionAccess ? { revisionAccess: session.revisionAccess } : {}),
+    ...(session.preRevealRevision ? { preRevealRevision: session.preRevealRevision } : {}),
     postRevealSurvey: session.postRevealSurvey,
     computedMetrics,
     completeness: getResearchExportCompleteness(session),

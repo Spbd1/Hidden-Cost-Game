@@ -9,6 +9,27 @@ const hiddenProfileSchema = z.enum(["High coverage", "Low coverage"]);
 const gameChoiceSchema = z.enum(["full-treatment", "partial-treatment", "skip-treatment"]);
 const medicalRiskLevelSchema = z.enum(["low", "medium", "high"]);
 const serverSubmissionStatusSchema = z.enum(["not_enabled", "not_submitted", "submitting", "submitted", "failed"]);
+const revisionAccessConditionSchema = z.enum(["revision-unlocked", "revision-locked"]);
+
+export const revisionAccessSchema = z
+  .object({
+    condition: revisionAccessConditionSchema,
+    assignedAt: isoDateStringSchema,
+    assignedAfterReveal: z.literal(true),
+    trigger: z.literal("post-reveal-back-navigation"),
+  })
+  .passthrough();
+
+export const preRevealRevisionSchema = z
+  .object({
+    attempted: z.boolean(),
+    allowed: z.boolean(),
+    used: z.boolean(),
+    firstAttemptedAt: isoDateStringSchema.optional(),
+    revisedAt: isoDateStringSchema.optional(),
+    blockedAt: isoDateStringSchema.optional(),
+  })
+  .passthrough();
 
 export const participantProfileSchema = z
   .object({
@@ -115,6 +136,18 @@ export const computedMetricsSchema = z
         post: z.string().min(1),
       })
       .passthrough(),
+    usedRevisionOpportunity: z.boolean().optional(),
+    revisionUnlocked: z.boolean().nullable().optional(),
+    attemptedPreRevealRevision: z.boolean().optional(),
+    responsibilityRevisionDelta: z.number().optional(),
+    constraintSuspicionRevisionDelta: z.number().optional(),
+    protestLegitimacyRevisionDelta: z.number().optional(),
+    ruleCorrectionRevisionDelta: z.number().optional(),
+    redistributionRevisionDelta: z.number().optional(),
+    confidenceRevisionDelta: z.number().optional(),
+    informationSufficiencyRevisionDelta: z.number().optional(),
+    changedPrimaryAttribution: z.boolean().optional(),
+    revisionMagnitude: z.number().optional(),
   })
   .passthrough();
 
@@ -145,6 +178,10 @@ export const researchExportSchema = z
     gameSummary: gameSummarySchema,
     gameRounds: z.array(gameRoundSchema).min(1),
     preRevealSurvey: preRevealSurveySchema,
+    preRevealSurveyOriginal: preRevealSurveySchema.optional(),
+    preRevealSurveyRevisedAfterReveal: preRevealSurveySchema.optional(),
+    revisionAccess: revisionAccessSchema.optional(),
+    preRevealRevision: preRevealRevisionSchema.optional(),
     postRevealSurvey: postRevealSurveySchema,
     computedMetrics: computedMetricsSchema,
     completeness: researchExportCompletenessSchema,

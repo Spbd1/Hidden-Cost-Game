@@ -133,6 +133,22 @@ export interface AttributionCategoryShift {
   post: string;
 }
 
+export interface RevisionAccess {
+  condition: "revision-unlocked" | "revision-locked";
+  assignedAt: string;
+  assignedAfterReveal: true;
+  trigger: "post-reveal-back-navigation";
+}
+
+export interface PreRevealRevision {
+  attempted: boolean;
+  allowed: boolean;
+  used: boolean;
+  firstAttemptedAt?: string;
+  revisedAt?: string;
+  blockedAt?: string;
+}
+
 export interface ComputedResearchMetrics {
   responsibilityShift: number;
   constraintRecognitionShift: number;
@@ -145,6 +161,18 @@ export interface ComputedResearchMetrics {
   burden: number;
   careAvoidance: number;
   attributionCategoryShift: AttributionCategoryShift;
+  usedRevisionOpportunity?: boolean;
+  revisionUnlocked?: boolean | null;
+  attemptedPreRevealRevision?: boolean;
+  responsibilityRevisionDelta?: number;
+  constraintSuspicionRevisionDelta?: number;
+  protestLegitimacyRevisionDelta?: number;
+  ruleCorrectionRevisionDelta?: number;
+  redistributionRevisionDelta?: number;
+  confidenceRevisionDelta?: number;
+  informationSufficiencyRevisionDelta?: number;
+  changedPrimaryAttribution?: boolean;
+  revisionMagnitude?: number;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -175,6 +203,10 @@ export interface ResearchExport {
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
   preRevealSurvey: PreRevealSurveyAnswers;
+  preRevealSurveyOriginal?: PreRevealSurveyAnswers;
+  preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
+  revisionAccess?: RevisionAccess;
+  preRevealRevision?: PreRevealRevision;
   postRevealSurvey: PostRevealSurveyAnswers;
   computedMetrics: ComputedResearchMetrics;
   completeness: ResearchExportCompleteness;
@@ -199,6 +231,10 @@ export interface ResearchSession {
   responses: Record<string, unknown>;
   game?: HiddenCostGameState;
   preRevealSurvey?: PreRevealSurveyAnswers;
+  preRevealSurveyOriginal?: PreRevealSurveyAnswers;
+  preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
+  revisionAccess?: RevisionAccess;
+  preRevealRevision?: PreRevealRevision;
   postRevealSurvey?: PostRevealSurveyAnswers;
   preRevealSurveyStartedAt?: string;
   preRevealSurveyCompletedAt?: string;

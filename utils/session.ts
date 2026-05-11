@@ -1,4 +1,4 @@
-import type { ResearchSession, StageId } from "@/types/research";
+import type { ResearchSession, RevisionAccess, StageId } from "@/types/research";
 
 export const STORAGE_KEY = "hidden-cost-game-session";
 
@@ -66,6 +66,10 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
     responses: candidate.responses ?? {},
     game: candidate.game,
     preRevealSurvey: candidate.preRevealSurvey,
+    preRevealSurveyOriginal: candidate.preRevealSurveyOriginal ?? (candidate.preRevealSurveyCompletedAt ? candidate.preRevealSurvey : undefined),
+    preRevealSurveyRevisedAfterReveal: candidate.preRevealSurveyRevisedAfterReveal,
+    revisionAccess: candidate.revisionAccess,
+    preRevealRevision: candidate.preRevealRevision,
     postRevealSurvey: candidate.postRevealSurvey,
     preRevealSurveyStartedAt: candidate.preRevealSurveyStartedAt,
     preRevealSurveyCompletedAt: candidate.preRevealSurveyCompletedAt,
@@ -85,4 +89,22 @@ function normalizeStageId(value: unknown, fallback: StageId): StageId {
   }
 
   return typeof value === "string" ? (value as StageId) : fallback;
+}
+
+export function assignPreRevealRevisionAccess(session: ResearchSession): ResearchSession {
+  if (!session.revealViewedAt || session.revisionAccess) {
+    return session;
+  }
+
+  const revisionAccess: RevisionAccess = {
+    condition: Math.random() < 0.5 ? "revision-unlocked" : "revision-locked",
+    assignedAt: new Date().toISOString(),
+    assignedAfterReveal: true,
+    trigger: "post-reveal-back-navigation",
+  };
+
+  return {
+    ...session,
+    revisionAccess,
+  };
 }
