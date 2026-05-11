@@ -172,6 +172,18 @@ curl http://127.0.0.1:3000/api/health
 
 A healthy app should return a JSON response.
 
+Run the VPS smoke test script to verify the homepage, health endpoint, and token-protected admin API endpoints without printing the admin token:
+
+```bash
+BASE_URL=http://127.0.0.1:3000 ADMIN_EXPORT_TOKEN="..." bash scripts/vps-smoke-test.sh
+```
+
+If you only want to verify public endpoints, omit `ADMIN_EXPORT_TOKEN` and the admin checks will be skipped:
+
+```bash
+BASE_URL=http://127.0.0.1:3000 bash scripts/vps-smoke-test.sh
+```
+
 ## 9. Reverse proxy with Caddy
 
 Use a reverse proxy so visitors reach the app over HTTPS. Caddy is beginner-friendly because it can automatically request and renew TLS certificates.
