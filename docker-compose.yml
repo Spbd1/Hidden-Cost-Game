@@ -1,24 +1,31 @@
 services:
   app:
-    build: .
+    build:
+      context: .
+      args:
+        # Public browser flag is embedded during `next build`; set it before building on the VPS.
+        NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION: ${NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION:-true}
     env_file:
       - path: .env
         required: false
     environment:
       NODE_ENV: production
       NEXT_TELEMETRY_DISABLED: "1"
-      APP_BASE_URL: ${APP_BASE_URL:-http://localhost:3000}
+      APP_BASE_URL: ${APP_BASE_URL:-http://127.0.0.1:3000}
       DATABASE_URL: postgresql://${POSTGRES_USER:-hcg}:${POSTGRES_PASSWORD:-hcg_password_change_me}@postgres:5432/${POSTGRES_DB:-hidden_cost_game}?schema=public
       ENABLE_SERVER_SUBMISSION: ${ENABLE_SERVER_SUBMISSION:-true}
       NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION: ${NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION:-true}
       ADMIN_EXPORT_TOKEN: ${ADMIN_EXPORT_TOKEN:-change-me-before-production}
-      ADMIN_DASHBOARD_PASSWORD: ${ADMIN_DASHBOARD_PASSWORD:-change-me-before-production}
       SUBMISSION_RATE_LIMIT_WINDOW_MS: ${SUBMISSION_RATE_LIMIT_WINDOW_MS:-60000}
       SUBMISSION_RATE_LIMIT_MAX: ${SUBMISSION_RATE_LIMIT_MAX:-20}
       MAX_SUBMISSION_BODY_BYTES: ${MAX_SUBMISSION_BODY_BYTES:-250000}
+      GOOGLE_SHEETS_WEBHOOK_URL: ${GOOGLE_SHEETS_WEBHOOK_URL:-}
+      GOOGLE_SHEETS_WEBHOOK_SECRET: ${GOOGLE_SHEETS_WEBHOOK_SECRET:-}
       CONSENT_VERSION: ${CONSENT_VERSION:-pilot-consent-v1}
       SCHEMA_VERSION: ${SCHEMA_VERSION:-research-export-v1}
     ports:
+      # VPS: app is reachable only on the host at http://127.0.0.1:3000.
+      # Public access should go through Caddy/Nginx with HTTPS termination.
       - "127.0.0.1:3000:3000"
     depends_on:
       postgres:
@@ -39,7 +46,7 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
-    # Intentionally no ports: entry. Keep Postgres private to the Docker network in production.
+    # VPS: intentionally no `ports:` entry. Postgres stays private inside the Docker network.
 
 volumes:
   postgres_data:
