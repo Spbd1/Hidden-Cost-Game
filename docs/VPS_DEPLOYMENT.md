@@ -115,7 +115,7 @@ Required production values:
 - `ENABLE_SERVER_SUBMISSION="true"`: enables the server API that accepts participant submissions.
 - `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION="true"`: shows the submission UI in the browser; because this is a public build-time value, rebuild the app after changing it.
 - `ADMIN_EXPORT_TOKEN="long random secret"`: secret token used to open `/admin` and export CSV/JSON. Keep it private, never leave it as `change-me-before-production`, and send it only in the `Authorization: Bearer <token>` header.
-- `POSTGRES_PASSWORD="long random password"`: password for the Docker PostgreSQL database. Keep it private and back up your data before changing it later.
+- `POSTGRES_PASSWORD="long random password"`: password for the Docker PostgreSQL database. Keep it private and back up your data before changing it later. The production app refuses to start if this is still the example `hcg_password_change_me` value.
 
 Optional Google Sheets values:
 
@@ -136,7 +136,7 @@ Run the command once for `ADMIN_EXPORT_TOKEN`, once for `POSTGRES_PASSWORD`, and
 
 ## 7. Start the app
 
-Build and start the app and database in the background:
+Build and start the app and database in the background. If `.env` still contains placeholder production secrets, the app container will fail closed before starting Next.js; replace `ADMIN_EXPORT_TOKEN` and `POSTGRES_PASSWORD` first.
 
 ```bash
 docker compose up --build -d
@@ -249,7 +249,8 @@ Then open `https://your-domain.com` in your browser.
 Before collecting real pilot data:
 
 - Use HTTPS, with HTTP redirected to HTTPS by Caddy.
-- Use a long random `ADMIN_EXPORT_TOKEN`; the production admin API refuses a missing token and refuses the example `change-me-before-production` token.
+- Use a long random `ADMIN_EXPORT_TOKEN`; the production admin API and startup validation refuse a missing token and refuse the example `change-me-before-production` token.
+- Use a long random `POSTGRES_PASSWORD`; startup validation refuses the example `hcg_password_change_me` password in production.
 - Send the admin token only as `Authorization: Bearer <token>`, not as a query string.
 - Optionally protect `/admin` and `/api/admin/*` behind Caddy `basic_auth`, an IP allowlist, VPN, or institutional access control.
 - Keep `.env`, database backups, and exported CSV/JSON files private.
