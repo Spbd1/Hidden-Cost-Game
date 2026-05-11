@@ -12,6 +12,7 @@ const serverSubmissionStatusSchema = z.enum(["not_enabled", "not_submitted", "su
 const revisionAccessConditionSchema = z.enum(["revision-unlocked", "revision-locked"]);
 const revealTimingConditionNameSchema = z.enum(["immediate-reveal", "delayed-reveal"]);
 const explanationFrameConditionNameSchema = z.enum(["explain-to-self", "explain-to-other"]);
+const costVisibilityConditionNameSchema = z.enum(["no-cost-info", "partial-cost-hint", "full-cost-preview"]);
 
 export const revisionAccessSchema = z
   .object({
@@ -51,6 +52,13 @@ export const preRevealCommitmentSchema = z
 export const explanationFrameConditionSchema = z
   .object({
     condition: explanationFrameConditionNameSchema,
+    assignedAt: isoDateStringSchema,
+  })
+  .passthrough();
+
+export const costVisibilityConditionSchema = z
+  .object({
+    condition: costVisibilityConditionNameSchema,
     assignedAt: isoDateStringSchema,
   })
   .passthrough();
@@ -166,6 +174,9 @@ export const computedMetricsSchema = z
     memoryConfidence: likertSchema,
     memoryDistortionMagnitude: z.number().nonnegative(),
     explanationFrame: explanationFrameConditionNameSchema.nullable(),
+    costVisibilityCondition: costVisibilityConditionNameSchema.nullable(),
+    hadAnyCostHint: z.boolean(),
+    hadStrongCostHint: z.boolean(),
     attributionCategoryShift: z
       .object({
         pre: z.string().min(1),
@@ -213,6 +224,7 @@ export const researchExportSchema = z
     revealTimingCondition: revealTimingConditionSchema.optional(),
     preRevealCommitment: preRevealCommitmentSchema.optional(),
     explanationFrameCondition: explanationFrameConditionSchema.optional(),
+    costVisibilityCondition: costVisibilityConditionSchema.optional(),
     assignedProfile: assignedProfileSchema,
     gameSummary: gameSummarySchema,
     gameRounds: z.array(gameRoundSchema).min(1),

@@ -13,8 +13,8 @@ import {
   isPostRevealSurveyComplete,
   isPreRevealSurveyComplete,
 } from "@/utils/researchMetrics";
-import { getStoredSession, saveStoredSession } from "@/utils/session";
-import type { ComputedResearchMetrics, GameSummary, HiddenCostGameState, PostRevealSurveyAnswers, PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
+import { assignCostVisibilityCondition, getStoredSession, saveStoredSession } from "@/utils/session";
+import type { ComputedResearchMetrics, CostVisibilityConditionName, GameSummary, HiddenCostGameState, PostRevealSurveyAnswers, PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
 const fictionalPlayers = [
   { name: "Player 1", score: 164 },
@@ -52,10 +52,11 @@ export function ResultsTable({ mode = "visible" }: { mode?: ResultsMode }) {
       return;
     }
 
-    const nextSession: ResearchSession = {
+    const stagedSession: ResearchSession = {
       ...storedSession,
       currentStage: targetStage,
     };
+    const nextSession = mode === "visible" ? assignCostVisibilityCondition(stagedSession) : stagedSession;
 
     saveStoredSession(nextSession);
     setSession(nextSession);
@@ -90,12 +91,31 @@ export function ResultsTable({ mode = "visible" }: { mode?: ResultsMode }) {
         At this stage, you can see the score table. Please answer based only on the information currently available.
       </p>
 
+      {session?.costVisibilityCondition ? <CostVisibilityNote condition={session.costVisibilityCondition.condition} /> : null}
+
       <ResultsRankingTable players={sortedPlayers} />
 
       <div className="flex justify-end border-t border-slate-200 pt-6">
         <ButtonLink href="/pre-reveal-survey">Continue to questions</ButtonLink>
       </div>
     </Card>
+  );
+}
+
+function CostVisibilityNote({ condition }: { condition: CostVisibilityConditionName }) {
+  if (condition === "no-cost-info") {
+    return null;
+  }
+
+  const message =
+    condition === "partial-cost-hint"
+      ? "The score table may not show all conditions that shaped players' decisions. Some costs or constraints may differ across profiles."
+      : "Players may have faced different treatment-cost conditions during the game. The score table alone may not fully explain the final outcomes.";
+
+  return (
+    <p className="rounded-2xl border border-amber-200 bg-amber-50 p-5 leading-7 text-amber-950">
+      {message}
+    </p>
   );
 }
 
@@ -117,6 +137,7 @@ function IndividualResults({
     postRevealSurvey,
     preRevealSurveyOriginal: session.preRevealSurveyOriginal,
     explanationFrameCondition: session.explanationFrameCondition,
+    costVisibilityCondition: session.costVisibilityCondition,
   });
   const interpretations = buildParticipantInterpretation(computedMetrics);
 
@@ -232,6 +253,9 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Remembered attribution matches original", metrics.rememberedPrimaryAttributionMatchesOriginal ? "Yes" : "No"],
     ["Memory confidence", metrics.memoryConfidence],
     ["Memory distortion magnitude", metrics.memoryDistortionMagnitude],
+    ["Cost visibility condition", metrics.costVisibilityCondition ?? "Not assigned"],
+    ["Had any cost hint", metrics.hadAnyCostHint ? "Yes" : "No"],
+    ["Had strong cost hint", metrics.hadStrongCostHint ? "Yes" : "No"],
   ] as const;
 
   return (

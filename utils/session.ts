@@ -1,4 +1,4 @@
-import type { ExplanationFrameCondition, ResearchSession, RevealTimingCondition, RevisionAccess, StageId } from "@/types/research";
+import type { CostVisibilityCondition, ExplanationFrameCondition, ResearchSession, RevealTimingCondition, RevisionAccess, StageId } from "@/types/research";
 
 export const STORAGE_KEY = "hidden-cost-game-session";
 
@@ -73,6 +73,7 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
     revealTimingCondition: candidate.revealTimingCondition,
     preRevealCommitment: candidate.preRevealCommitment,
     explanationFrameCondition: candidate.explanationFrameCondition,
+    costVisibilityCondition: candidate.costVisibilityCondition,
     postRevealSurvey: candidate.postRevealSurvey,
     preRevealSurveyStartedAt: candidate.preRevealSurveyStartedAt,
     preRevealSurveyCompletedAt: candidate.preRevealSurveyCompletedAt,
@@ -128,6 +129,22 @@ export function assignRevealTimingCondition(session: ResearchSession): ResearchS
   };
 }
 
+export function assignCostVisibilityCondition(session: ResearchSession): ResearchSession {
+  if (session.costVisibilityCondition) {
+    return session;
+  }
+
+  const roll = Math.random();
+  const costVisibilityCondition: CostVisibilityCondition = {
+    condition: roll < 1 / 3 ? "no-cost-info" : roll < 2 / 3 ? "partial-cost-hint" : "full-cost-preview",
+    assignedAt: new Date().toISOString(),
+  };
+
+  return {
+    ...session,
+    costVisibilityCondition,
+  };
+}
 
 export function assignExplanationFrameCondition(session: ResearchSession): ResearchSession {
   if (session.explanationFrameCondition) {
