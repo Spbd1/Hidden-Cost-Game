@@ -22,6 +22,12 @@ export function HiddenRuleReveal() {
       return;
     }
 
+    if (storedSession.revealTimingCondition?.condition === "delayed-reveal" && !storedSession.preRevealCommitment && !storedSession.revealViewedAt) {
+      saveStoredSession({ ...storedSession, currentStage: "pre-reveal" });
+      router.replace("/pre-reveal-reflection");
+      return;
+    }
+
     const nextSession: ResearchSession = {
       ...storedSession,
       currentStage: "reveal",

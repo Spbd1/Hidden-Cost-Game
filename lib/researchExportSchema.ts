@@ -10,6 +10,7 @@ const gameChoiceSchema = z.enum(["full-treatment", "partial-treatment", "skip-tr
 const medicalRiskLevelSchema = z.enum(["low", "medium", "high"]);
 const serverSubmissionStatusSchema = z.enum(["not_enabled", "not_submitted", "submitting", "submitted", "failed"]);
 const revisionAccessConditionSchema = z.enum(["revision-unlocked", "revision-locked"]);
+const revealTimingConditionNameSchema = z.enum(["immediate-reveal", "delayed-reveal"]);
 
 export const revisionAccessSchema = z
   .object({
@@ -28,6 +29,21 @@ export const preRevealRevisionSchema = z
     firstAttemptedAt: isoDateStringSchema.optional(),
     revisedAt: isoDateStringSchema.optional(),
     blockedAt: isoDateStringSchema.optional(),
+  })
+  .passthrough();
+
+export const revealTimingConditionSchema = z
+  .object({
+    condition: revealTimingConditionNameSchema,
+    assignedAt: isoDateStringSchema,
+  })
+  .passthrough();
+
+export const preRevealCommitmentSchema = z
+  .object({
+    standByInitialInterpretation: likertSchema,
+    explanationConfidenceText: z.string().trim().max(500).optional(),
+    completedAt: isoDateStringSchema,
   })
   .passthrough();
 
@@ -130,6 +146,8 @@ export const computedMetricsSchema = z
     perspectiveChange: z.number(),
     burden: z.number(),
     careAvoidance: z.number(),
+    delayedReveal: z.boolean(),
+    standByInitialInterpretation: likertSchema.optional(),
     attributionCategoryShift: z
       .object({
         pre: z.string().min(1),
@@ -174,6 +192,8 @@ export const researchExportSchema = z
     serverSubmittedAt: isoDateStringSchema.optional(),
     createdAt: isoDateStringSchema.optional(),
     sessionCreatedAt: isoDateStringSchema.optional(),
+    revealTimingCondition: revealTimingConditionSchema.optional(),
+    preRevealCommitment: preRevealCommitmentSchema.optional(),
     assignedProfile: assignedProfileSchema,
     gameSummary: gameSummarySchema,
     gameRounds: z.array(gameRoundSchema).min(1),

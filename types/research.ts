@@ -149,6 +149,19 @@ export interface PreRevealRevision {
   blockedAt?: string;
 }
 
+export type RevealTimingConditionName = "immediate-reveal" | "delayed-reveal";
+
+export interface RevealTimingCondition {
+  condition: RevealTimingConditionName;
+  assignedAt: string;
+}
+
+export interface PreRevealCommitment {
+  standByInitialInterpretation: number;
+  explanationConfidenceText?: string;
+  completedAt: string;
+}
+
 export interface ComputedResearchMetrics {
   responsibilityShift: number;
   constraintRecognitionShift: number;
@@ -173,6 +186,8 @@ export interface ComputedResearchMetrics {
   informationSufficiencyRevisionDelta?: number;
   changedPrimaryAttribution?: boolean;
   revisionMagnitude?: number;
+  delayedReveal: boolean;
+  standByInitialInterpretation?: number;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -199,6 +214,8 @@ export interface ResearchExport {
   postRevealSurveyStartedAt?: string;
   postRevealSurveyCompletedAt?: string;
   participantProfile?: ParticipantProfile;
+  revealTimingCondition?: RevealTimingCondition;
+  preRevealCommitment?: PreRevealCommitment;
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
@@ -235,6 +252,8 @@ export interface ResearchSession {
   preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
   revisionAccess?: RevisionAccess;
   preRevealRevision?: PreRevealRevision;
+  revealTimingCondition?: RevealTimingCondition;
+  preRevealCommitment?: PreRevealCommitment;
   postRevealSurvey?: PostRevealSurveyAnswers;
   preRevealSurveyStartedAt?: string;
   preRevealSurveyCompletedAt?: string;

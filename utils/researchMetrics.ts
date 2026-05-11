@@ -100,6 +100,8 @@ export function calculateComputedResearchMetrics({
   preRevealSurveyRevisedAfterReveal,
   revisionAccess,
   preRevealRevision,
+  revealTimingCondition,
+  preRevealCommitment,
 }: {
   game: HiddenCostGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
@@ -108,6 +110,8 @@ export function calculateComputedResearchMetrics({
   preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
   revisionAccess?: ResearchSession["revisionAccess"];
   preRevealRevision?: ResearchSession["preRevealRevision"];
+  revealTimingCondition?: ResearchSession["revealTimingCondition"];
+  preRevealCommitment?: ResearchSession["preRevealCommitment"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
   const responsibilityRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.individualResponsibility - preRevealSurveyOriginal.individualResponsibility : undefined;
@@ -139,6 +143,8 @@ export function calculateComputedResearchMetrics({
     perspectiveChange: postRevealSurvey.perspectiveChange,
     burden: roundMetric(summary.totalTreatmentCostPaid / Math.max(summary.totalIncome, 1)),
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
+    delayedReveal: revealTimingCondition?.condition === "delayed-reveal",
+    ...(preRevealCommitment ? { standByInitialInterpretation: preRevealCommitment.standByInitialInterpretation } : {}),
     attributionCategoryShift: {
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,
@@ -234,6 +240,8 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal,
     revisionAccess: session.revisionAccess,
     preRevealRevision: session.preRevealRevision,
+    revealTimingCondition: session.revealTimingCondition,
+    preRevealCommitment: session.preRevealCommitment,
   });
 
   return {
@@ -252,6 +260,8 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     postRevealSurveyStartedAt: session.postRevealSurveyStartedAt,
     postRevealSurveyCompletedAt: session.postRevealSurveyCompletedAt,
     participantProfile: session.participantProfile,
+    ...(session.revealTimingCondition ? { revealTimingCondition: session.revealTimingCondition } : {}),
+    ...(session.preRevealCommitment ? { preRevealCommitment: session.preRevealCommitment } : {}),
     assignedProfile: {
       displayedProfile: session.game.displayedProfile,
       hiddenProfile: session.game.hiddenProfile,
