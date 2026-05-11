@@ -13,7 +13,7 @@ import type {
 } from "@/types/research";
 
 export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-4";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-5";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -107,6 +107,7 @@ export function calculateComputedResearchMetrics({
   revealTimingCondition,
   preRevealCommitment,
   explanationFrameCondition,
+  costVisibilityCondition,
 }: {
   game: HiddenCostGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
@@ -118,6 +119,7 @@ export function calculateComputedResearchMetrics({
   revealTimingCondition?: ResearchSession["revealTimingCondition"];
   preRevealCommitment?: ResearchSession["preRevealCommitment"];
   explanationFrameCondition?: ResearchSession["explanationFrameCondition"];
+  costVisibilityCondition?: ResearchSession["costVisibilityCondition"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
   const originalPreRevealSurvey = preRevealSurveyOriginal ?? preRevealSurvey;
@@ -141,6 +143,7 @@ export function calculateComputedResearchMetrics({
     informationSufficiencyRevisionDelta,
   ];
   const hasRevisionComparison = revisionDeltas.every((delta): delta is number => typeof delta === "number");
+  const costVisibilityConditionName = costVisibilityCondition?.condition ?? null;
 
   return {
     responsibilityShift: postRevealSurvey.revisedIndividualResponsibility - preRevealSurvey.individualResponsibility,
@@ -161,6 +164,9 @@ export function calculateComputedResearchMetrics({
     memoryConfidence: postRevealSurvey.rememberedConfidence,
     memoryDistortionMagnitude: roundMetric(memoryDistortionMagnitude),
     explanationFrame: explanationFrameCondition?.condition ?? null,
+    costVisibilityCondition: costVisibilityConditionName,
+    hadAnyCostHint: costVisibilityConditionName === "partial-cost-hint" || costVisibilityConditionName === "full-cost-preview",
+    hadStrongCostHint: costVisibilityConditionName === "full-cost-preview",
     attributionCategoryShift: {
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,
@@ -259,6 +265,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     revealTimingCondition: session.revealTimingCondition,
     preRevealCommitment: session.preRevealCommitment,
     explanationFrameCondition: session.explanationFrameCondition,
+    costVisibilityCondition: session.costVisibilityCondition,
   });
 
   return {
@@ -280,6 +287,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     ...(session.revealTimingCondition ? { revealTimingCondition: session.revealTimingCondition } : {}),
     ...(session.preRevealCommitment ? { preRevealCommitment: session.preRevealCommitment } : {}),
     ...(session.explanationFrameCondition ? { explanationFrameCondition: session.explanationFrameCondition } : {}),
+    ...(session.costVisibilityCondition ? { costVisibilityCondition: session.costVisibilityCondition } : {}),
     assignedProfile: {
       displayedProfile: session.game.displayedProfile,
       hiddenProfile: session.game.hiddenProfile,

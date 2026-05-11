@@ -155,6 +155,7 @@ export interface PreRevealRevision {
 
 export type RevealTimingConditionName = "immediate-reveal" | "delayed-reveal";
 export type ExplanationFrameConditionName = "explain-to-self" | "explain-to-other";
+export type CostVisibilityConditionName = "no-cost-info" | "partial-cost-hint" | "full-cost-preview";
 
 export interface RevealTimingCondition {
   condition: RevealTimingConditionName;
@@ -169,6 +170,11 @@ export interface PreRevealCommitment {
 
 export interface ExplanationFrameCondition {
   condition: ExplanationFrameConditionName;
+  assignedAt: string;
+}
+
+export interface CostVisibilityCondition {
+  condition: CostVisibilityConditionName;
   assignedAt: string;
 }
 
@@ -204,6 +210,9 @@ export interface ComputedResearchMetrics {
   memoryConfidence: number;
   memoryDistortionMagnitude: number;
   explanationFrame: ExplanationFrameConditionName | null;
+  costVisibilityCondition: CostVisibilityConditionName | null;
+  hadAnyCostHint: boolean;
+  hadStrongCostHint: boolean;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -233,6 +242,7 @@ export interface ResearchExport {
   revealTimingCondition?: RevealTimingCondition;
   preRevealCommitment?: PreRevealCommitment;
   explanationFrameCondition?: ExplanationFrameCondition;
+  costVisibilityCondition?: CostVisibilityCondition;
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
@@ -272,6 +282,7 @@ export interface ResearchSession {
   revealTimingCondition?: RevealTimingCondition;
   preRevealCommitment?: PreRevealCommitment;
   explanationFrameCondition?: ExplanationFrameCondition;
+  costVisibilityCondition?: CostVisibilityCondition;
   postRevealSurvey?: PostRevealSurveyAnswers;
   preRevealSurveyStartedAt?: string;
   preRevealSurveyCompletedAt?: string;
