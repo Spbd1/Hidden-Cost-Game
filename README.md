@@ -162,10 +162,80 @@ Start from `.env.example` for local or server configuration.
 | `SUBMISSION_RATE_LIMIT_WINDOW_MS` | Optional | `60000` | Submission API | In-memory rate-limit window for submission attempts. Defaults to 60000 ms. |
 | `SUBMISSION_RATE_LIMIT_MAX` | Optional | `20` | Submission API | Maximum submissions per client key per window. Defaults to 20. |
 | `MAX_SUBMISSION_BODY_BYTES` | Optional | `250000` | Submission API | Maximum accepted submission body size. Defaults to 250000 bytes. |
+| `GOOGLE_SHEETS_WEBHOOK_URL` | Optional | `https://script.google.com/macros/s/.../exec` | Submission API | Optional Google Apps Script webhook URL. When set, successfully stored submissions are mirrored to Google Sheets after PostgreSQL save. |
+| `GOOGLE_SHEETS_WEBHOOK_SECRET` | Recommended with Sheets mirror | `replace-with-a-long-random-secret` | Submission API, Apps Script | Shared secret sent to the webhook for verification. Keep it private and do not append it to sheet rows. |
 | `CONSENT_VERSION` | Optional server metadata fallback | `pilot-consent-v1` | Submission API | Stored as a fallback if a submitted payload lacks `consentVersion`. The client export currently uses the version constant in `utils/researchMetrics.ts`. |
 | `SCHEMA_VERSION` | Present in `.env.example`; not currently read by app code | `research-export-v1` | Deployment convention only | Reserved/configuration note for schema versioning. The client export currently uses the schema version constant in `utils/researchMetrics.ts`. |
 
 For Docker Compose, `.env.example` also includes `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` for the bundled PostgreSQL service.
+
+
+## Optional Google Sheets mirror
+
+PostgreSQL remains the primary source of truth for completed research submissions. You can also mirror a flattened summary row to a Google Sheet by deploying a Google Apps Script web app and setting `GOOGLE_SHEETS_WEBHOOK_URL`. If the Sheets webhook is missing, slow, invalid, or returns an error, `POST /api/submissions` still returns success to the participant after the PostgreSQL write succeeds; the webhook result is only logged server-side.
+
+Setup steps:
+
+1. Create a Google Sheet and add a sheet tab named `Submissions`.
+2. Open **Extensions → Apps Script**, create a web app script, and set a script property named `WEBHOOK_SECRET`.
+3. Deploy the Apps Script as a web app and copy its `/exec` URL into `.env` as `GOOGLE_SHEETS_WEBHOOK_URL`; set the same secret in `GOOGLE_SHEETS_WEBHOOK_SECRET`.
+4. Restart the app so the server process reads the new environment variables.
+5. Submit one complete test session and verify both the app logs and the new Google Sheet row.
+
+A minimal Apps Script receiver that checks the shared secret from the JSON body is shown below. The app also sends an `Authorization: Bearer ...` header, but Apps Script web apps do not always expose request headers consistently, so this example validates `data.secret` and deliberately does not append the secret to the sheet row.
+
+```javascript
+function doPost(e) {
+  const expectedSecret = PropertiesService.getScriptProperties().getProperty("WEBHOOK_SECRET");
+  const data = JSON.parse(e.postData.contents || "{}");
+
+  if (!expectedSecret || data.secret !== expectedSecret) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Submissions");
+  if (!sheet) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: "missing Submissions sheet" }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  sheet.appendRow([
+    new Date(),
+    data.serverSubmissionId,
+    data.submittedAt,
+    data.sessionId,
+    data.schemaVersion,
+    data.exportVersion,
+    data.assignedDisplayedProfile,
+    data.assignedHiddenProfile,
+    data.finalFinancialScore,
+    data.finalHealthScore,
+    data.fullTreatmentChoices,
+    data.partialTreatmentChoices,
+    data.skippedTreatmentChoices,
+    data.responsibilityShift,
+    data.constraintRecognitionShift,
+    data.protestLegitimacyShift,
+    data.ruleCorrectionSupportShift,
+    data.redistributionSupportShift,
+    data.revisionCondition,
+    data.attemptedPreRevealRevision,
+    data.usedRevisionOpportunity,
+    data.revealTimingCondition,
+    data.costVisibilityCondition,
+    data.explanationFrameCondition,
+    data.replayCompleted,
+    data.replayAssignmentCondition
+  ]);
+
+  return ContentService
+    .createTextOutput(JSON.stringify({ ok: true }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+```
 
 ## Server pilot mode with Docker
 

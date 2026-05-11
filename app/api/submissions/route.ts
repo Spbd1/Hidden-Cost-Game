@@ -3,7 +3,8 @@ import type { PrismaClient } from "@prisma/client";
 import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 import { getPrismaClient } from "@/lib/prisma";
-import { researchExportSchema } from "@/lib/researchExportSchema";
+import { sendSubmissionToGoogleSheets } from "@/lib/googleSheetsWebhook";
+import { researchExportSchema, type ValidResearchExport } from "@/lib/researchExportSchema";
 import {
   getMaxSubmissionBodyBytes,
   getSubmissionRateLimitMax,
@@ -24,7 +25,7 @@ const rateLimitBuckets = new Map<string, RateLimitEntry>();
 type ResearchSubmissionCreateData = Parameters<PrismaClient["researchSubmission"]["create"]>[0]["data"];
 type ResearchSubmissionPayloadInput = ResearchSubmissionCreateData["payload"];
 
-type ResearchSubmissionPayload = Record<string, unknown> & {
+type ResearchSubmissionPayload = ValidResearchExport & {
   serverSubmissionId: string;
   submittedAt: string;
 };
@@ -100,6 +101,11 @@ export async function POST(request: NextRequest) {
       select: {
         id: true,
       },
+    });
+
+    await sendSubmissionToGoogleSheets(payload, {
+      serverSubmissionId,
+      submittedAt,
     });
 
     return NextResponse.json(
