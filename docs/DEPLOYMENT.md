@@ -25,8 +25,7 @@ At minimum review:
 
 - `APP_BASE_URL` — set this to `https://your-domain.com` in production.
 - `ENABLE_SERVER_SUBMISSION` and `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION` — set both to `true` when you want participant submissions stored on the server.
-- `ADMIN_EXPORT_TOKEN` — use a long random value for API exports.
-- `ADMIN_DASHBOARD_PASSWORD` — use a long random password for `/admin`.
+- `ADMIN_EXPORT_TOKEN` — use a long random value for API exports; never leave the production value empty or set to `change-me-before-production`.
 - `POSTGRES_PASSWORD` — change the local Docker default before real data collection.
 - `DATABASE_URL` — for native Node deployments, point this at the local/native Postgres database.
 
@@ -135,6 +134,30 @@ your-domain.com {
     reverse_proxy localhost:3000
 }
 ```
+
+Optional extra protection for researcher-only admin routes:
+
+```caddyfile
+your-domain.com {
+    route /admin* {
+        basic_auth {
+            researcher <hashed-password-placeholder>
+        }
+        reverse_proxy 127.0.0.1:3000
+    }
+
+    route /api/admin* {
+        basic_auth {
+            researcher <hashed-password-placeholder>
+        }
+        reverse_proxy 127.0.0.1:3000
+    }
+
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+Use HTTPS, keep `ADMIN_EXPORT_TOKEN` strong and private, send it only in `Authorization: Bearer <token>`, and consider Caddy `basic_auth`, an IP allowlist, VPN, or institutional SSO for `/admin` and `/api/admin/*`.
 
 ## E. Firewall
 

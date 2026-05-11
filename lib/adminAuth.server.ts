@@ -10,14 +10,22 @@ type AdminAuthResult =
     };
 
 const BEARER_PREFIX = "Bearer ";
+const PLACEHOLDER_ADMIN_TOKEN = "change-me-before-production";
 
 export function validateAdminRequest(request: NextRequest): AdminAuthResult {
-  const configuredToken = process.env.ADMIN_EXPORT_TOKEN;
+  const configuredToken = process.env.ADMIN_EXPORT_TOKEN?.trim();
 
   if (!configuredToken) {
     return {
       ok: false,
       response: adminJsonError("Admin export is not configured.", 500),
+    };
+  }
+
+  if (isUnsafeProductionAdminToken(configuredToken)) {
+    return {
+      ok: false,
+      response: adminJsonError("Admin export token must be changed before production use.", 500),
     };
   }
 
@@ -40,6 +48,24 @@ export function validateAdminRequest(request: NextRequest): AdminAuthResult {
   return { ok: true };
 }
 
+export function adminJsonResponse(body: unknown, init: ResponseInit = {}): NextResponse {
+  return NextResponse.json(body, withAdminNoStore(init));
+}
+
+export function withAdminNoStore(init: ResponseInit = {}): ResponseInit {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+
+  return {
+    ...init,
+    headers,
+  };
+}
+
+function isUnsafeProductionAdminToken(token: string): boolean {
+  return process.env.NODE_ENV === "production" && token === PLACEHOLDER_ADMIN_TOKEN;
+}
+
 function constantTimeTokenEquals(a: string, b: string): boolean {
   const aHash = createHash("sha256").update(a).digest();
   const bHash = createHash("sha256").update(b).digest();
@@ -48,5 +74,5 @@ function constantTimeTokenEquals(a: string, b: string): boolean {
 }
 
 function adminJsonError(error: string, status: number): NextResponse {
-  return NextResponse.json({ ok: false, error }, { status });
+  return adminJsonResponse({ ok: false, error }, { status });
 }

@@ -114,7 +114,7 @@ Required production values:
 - `APP_BASE_URL="https://your-domain.com"`: the public URL for the deployed site.
 - `ENABLE_SERVER_SUBMISSION="true"`: enables the server API that accepts participant submissions.
 - `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION="true"`: shows the submission UI in the browser; because this is a public build-time value, rebuild the app after changing it.
-- `ADMIN_EXPORT_TOKEN="long random secret"`: secret token used to open `/admin` and export CSV/JSON. Keep it private.
+- `ADMIN_EXPORT_TOKEN="long random secret"`: secret token used to open `/admin` and export CSV/JSON. Keep it private, never leave it as `change-me-before-production`, and send it only in the `Authorization: Bearer <token>` header.
 - `POSTGRES_PASSWORD="long random password"`: password for the Docker PostgreSQL database. Keep it private and back up your data before changing it later.
 
 Optional Google Sheets values:
@@ -200,6 +200,30 @@ your-domain.com {
 }
 ```
 
+For pilot data collection, also consider adding a second layer around the researcher-only admin routes. The app still requires `ADMIN_EXPORT_TOKEN` at `/api/admin/*`, but Caddy `basic_auth` or an IP allowlist reduces exposure if the token is mishandled. Generate a real hashed password with `caddy hash-password` and replace the placeholder before use:
+
+```caddyfile
+your-domain.com {
+  route /admin* {
+    basic_auth {
+      researcher <hashed-password-placeholder>
+    }
+    reverse_proxy 127.0.0.1:3000
+  }
+
+  route /api/admin* {
+    basic_auth {
+      researcher <hashed-password-placeholder>
+    }
+    reverse_proxy 127.0.0.1:3000
+  }
+
+  reverse_proxy 127.0.0.1:3000
+}
+```
+
+Use HTTPS for all participant and admin traffic. Do not put `ADMIN_EXPORT_TOKEN` in URLs or query strings, because URLs are more likely to appear in logs, browser history, and referrer data.
+
 Reload Caddy:
 
 ```bash
@@ -208,7 +232,17 @@ sudo systemctl reload caddy
 
 Then open `https://your-domain.com` in your browser.
 
-## 10. Firewall
+## 10. Admin route security checklist
+
+Before collecting real pilot data:
+
+- Use HTTPS, with HTTP redirected to HTTPS by Caddy.
+- Use a long random `ADMIN_EXPORT_TOKEN`; the production admin API refuses a missing token and refuses the example `change-me-before-production` token.
+- Send the admin token only as `Authorization: Bearer <token>`, not as a query string.
+- Optionally protect `/admin` and `/api/admin/*` behind Caddy `basic_auth`, an IP allowlist, VPN, or institutional access control.
+- Keep `.env`, database backups, and exported CSV/JSON files private.
+
+## 11. Firewall
 
 Enable UFW and allow only SSH plus web traffic:
 
@@ -224,7 +258,7 @@ Do **not** open port `3000` publicly for normal production use. The Docker Compo
 
 Only expose `3000` temporarily when debugging, and close it again immediately afterward.
 
-## 11. Update deployment
+## 12. Update deployment
 
 From the project directory, pull the latest branch changes:
 
@@ -250,7 +284,7 @@ Check logs after every update:
 docker compose logs -f app
 ```
 
-## 12. Backup notes
+## 13. Backup notes
 
 The bundled PostgreSQL database stores its files in the Docker volume named `postgres_data`. Docker volumes persist when containers are recreated, but they are still on the VPS disk. Back up the database before risky changes, major updates, or server migrations.
 
@@ -281,7 +315,7 @@ A restore command usually looks like this, but do not run it on production unles
 cat backups/hidden_cost_game_BACKUP_FILE.sql | docker compose exec -T postgres psql -U hcg -d hidden_cost_game
 ```
 
-## 13. Final smoke test
+## 14. Final smoke test
 
 After deployment and HTTPS setup, test the full production path:
 
