@@ -154,6 +154,7 @@ export interface PreRevealRevision {
 }
 
 export type RevealTimingConditionName = "immediate-reveal" | "delayed-reveal";
+export type ExplanationFrameConditionName = "explain-to-self" | "explain-to-other";
 
 export interface RevealTimingCondition {
   condition: RevealTimingConditionName;
@@ -164,6 +165,11 @@ export interface PreRevealCommitment {
   standByInitialInterpretation: number;
   explanationConfidenceText?: string;
   completedAt: string;
+}
+
+export interface ExplanationFrameCondition {
+  condition: ExplanationFrameConditionName;
+  assignedAt: string;
 }
 
 export interface ComputedResearchMetrics {
@@ -197,6 +203,7 @@ export interface ComputedResearchMetrics {
   rememberedPrimaryAttributionMatchesOriginal: boolean;
   memoryConfidence: number;
   memoryDistortionMagnitude: number;
+  explanationFrame: ExplanationFrameConditionName | null;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -225,6 +232,7 @@ export interface ResearchExport {
   participantProfile?: ParticipantProfile;
   revealTimingCondition?: RevealTimingCondition;
   preRevealCommitment?: PreRevealCommitment;
+  explanationFrameCondition?: ExplanationFrameCondition;
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
@@ -263,6 +271,7 @@ export interface ResearchSession {
   preRevealRevision?: PreRevealRevision;
   revealTimingCondition?: RevealTimingCondition;
   preRevealCommitment?: PreRevealCommitment;
+  explanationFrameCondition?: ExplanationFrameCondition;
   postRevealSurvey?: PostRevealSurveyAnswers;
   preRevealSurveyStartedAt?: string;
   preRevealSurveyCompletedAt?: string;

@@ -111,7 +111,13 @@ function IndividualResults({
   postRevealSurvey: PostRevealSurveyAnswers;
 }) {
   const gameSummary = calculateGameSummary(game);
-  const computedMetrics = calculateComputedResearchMetrics({ game, preRevealSurvey, postRevealSurvey, preRevealSurveyOriginal: session.preRevealSurveyOriginal });
+  const computedMetrics = calculateComputedResearchMetrics({
+    game,
+    preRevealSurvey,
+    postRevealSurvey,
+    preRevealSurveyOriginal: session.preRevealSurveyOriginal,
+    explanationFrameCondition: session.explanationFrameCondition,
+  });
   const interpretations = buildParticipantInterpretation(computedMetrics);
 
   return (
