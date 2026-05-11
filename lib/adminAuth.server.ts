@@ -10,7 +10,7 @@ type AdminAuthResult =
     };
 
 const BEARER_PREFIX = "Bearer ";
-const PLACEHOLDER_ADMIN_TOKEN = "change-me-before-production";
+export const DEFAULT_ADMIN_EXPORT_TOKEN = "change-me-before-production";
 
 export function validateAdminRequest(request: NextRequest): AdminAuthResult {
   const configuredToken = process.env.ADMIN_EXPORT_TOKEN?.trim();
@@ -63,7 +63,7 @@ export function withAdminNoStore(init: ResponseInit = {}): ResponseInit {
 }
 
 function isUnsafeProductionAdminToken(token: string): boolean {
-  return process.env.NODE_ENV === "production" && token === PLACEHOLDER_ADMIN_TOKEN;
+  return process.env.NODE_ENV === "production" && token === DEFAULT_ADMIN_EXPORT_TOKEN;
 }
 
 function constantTimeTokenEquals(a: string, b: string): boolean {

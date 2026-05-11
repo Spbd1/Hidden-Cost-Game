@@ -56,6 +56,26 @@ type AdminSubmissionPageResponse = {
   nextCursor?: string;
 };
 
+type AdminDiagnosticsResponse = {
+  ok: boolean;
+  error?: string;
+  nodeEnv: string;
+  appVersion: string;
+  serverTime: string;
+  databaseConfigured: boolean;
+  databaseReachable: boolean;
+  serverSubmissionEnabled: boolean;
+  googleSheetsWebhookConfigured: boolean;
+  googleSheetsSecretConfigured: boolean;
+  adminTokenConfigured: boolean;
+  adminTokenUsesDefaultValue: boolean;
+  maxSubmissionBodyBytes: number;
+  submissionRateLimitWindowMs: number;
+  submissionRateLimitMax: number;
+  latestSubmissionAt: string | null;
+  totalSubmissions: number;
+};
+
 type DownloadKind = "json" | "csv";
 
 const SESSION_TOKEN_KEY = "hidden-cost-game-admin-export-token";
@@ -164,6 +184,8 @@ export function AdminDashboard() {
   const [token, setToken] = useState("");
   const [rememberToken, setRememberToken] = useState(false);
   const [stats, setStats] = useState<AdminStatsResponse | null>(null);
+  const [diagnostics, setDiagnostics] =
+    useState<AdminDiagnosticsResponse | null>(null);
   const [submissions, setSubmissions] = useState<AdminSubmission[]>([]);
   const [error, setError] = useState("");
   const [status, setStatus] = useState("");
@@ -177,6 +199,7 @@ export function AdminDashboard() {
   );
   const jsonCurl = `curl -H "Authorization: Bearer $ADMIN_EXPORT_TOKEN" \\\n  "${curlBaseUrl}/api/admin/submissions?limit=500" \\\n  -o submissions.json`;
   const csvCurl = `curl -H "Authorization: Bearer $ADMIN_EXPORT_TOKEN" \\\n  "${curlBaseUrl}/api/admin/submissions.csv" \\\n  -o submissions.csv`;
+  const diagnosticsCurl = `curl -H "Authorization: Bearer TOKEN" "${curlBaseUrl}/api/admin/diagnostics"`;
 
   useEffect(() => {
     const sessionToken = window.sessionStorage.getItem(SESSION_TOKEN_KEY);
@@ -199,10 +222,15 @@ export function AdminDashboard() {
     setStatus("Loading dashboard…");
     setError("");
     setStats(null);
+    setDiagnostics(null);
     setSubmissions([]);
 
     try {
-      const [nextStats, nextSubmissions] = await Promise.all([
+      const [nextDiagnostics, nextStats, nextSubmissions] = await Promise.all([
+        fetchAdminJson<AdminDiagnosticsResponse>(
+          "/api/admin/diagnostics",
+          trimmedToken,
+        ),
         fetchAdminJson<AdminStatsResponse>("/api/admin/stats", trimmedToken),
         fetchAdminJson<AdminSubmissionPageResponse>(
           "/api/admin/submissions?limit=20",
@@ -217,6 +245,7 @@ export function AdminDashboard() {
         window.localStorage.removeItem(REMEMBERED_TOKEN_KEY);
       }
 
+      setDiagnostics(nextDiagnostics);
       setStats(nextStats);
       setSubmissions(nextSubmissions.items ?? []);
       setStatus("Dashboard loaded.");
@@ -287,6 +316,7 @@ export function AdminDashboard() {
     setToken("");
     setRememberToken(false);
     setStats(null);
+    setDiagnostics(null);
     setSubmissions([]);
     setStatus("Token removed from this browser.");
     setError("");
@@ -353,6 +383,10 @@ export function AdminDashboard() {
           </p>
         ) : null}
       </section>
+
+      {diagnostics ? (
+        <DiagnosticsPanel diagnostics={diagnostics} />
+      ) : null}
 
       {stats ? (
         <>
@@ -536,9 +570,106 @@ export function AdminDashboard() {
               copied={copyStatus === "csv"}
               onCopy={() => handleCopy("csv", csvCurl)}
             />
+            <CurlCard
+              title="curl diagnostics"
+              command={diagnosticsCurl}
+              copied={copyStatus === "diagnostics"}
+              onCopy={() => handleCopy("diagnostics", diagnosticsCurl)}
+            />
           </section>
         </>
       ) : null}
+    </div>
+  );
+}
+
+
+function DiagnosticsPanel({
+  diagnostics,
+}: {
+  diagnostics: AdminDiagnosticsResponse;
+}) {
+  const badgeItems = [
+    ["Database configured", diagnostics.databaseConfigured],
+    ["Database reachable", diagnostics.databaseReachable],
+    ["Server submission", diagnostics.serverSubmissionEnabled],
+    ["Sheets webhook", diagnostics.googleSheetsWebhookConfigured],
+    ["Sheets secret", diagnostics.googleSheetsSecretConfigured],
+    ["Admin token", diagnostics.adminTokenConfigured],
+  ] as const;
+
+  return (
+    <section className="space-y-5 rounded-3xl border border-slate-200 bg-white p-6 shadow-card md:p-8">
+      <div>
+        <h2 className="text-xl font-bold text-ink">Production diagnostics</h2>
+        <p className="text-sm text-slate-600">
+          Safe environment and connectivity checks for VPS debugging. Secrets
+          and URLs are never shown.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {badgeItems.map(([label, enabled]) => (
+          <StatusBadge key={label} label={label} enabled={enabled} />
+        ))}
+        {diagnostics.adminTokenUsesDefaultValue ? (
+          <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-800">
+            Default admin token
+          </span>
+        ) : null}
+      </div>
+      <dl className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <DiagnosticDetail label="Node environment" value={diagnostics.nodeEnv} />
+        <DiagnosticDetail label="App version" value={diagnostics.appVersion} />
+        <DiagnosticDetail
+          label="Server time"
+          value={formatDate(diagnostics.serverTime)}
+        />
+        <DiagnosticDetail
+          label="Latest submission"
+          value={formatDate(diagnostics.latestSubmissionAt)}
+        />
+        <DiagnosticDetail
+          label="Total submissions"
+          value={diagnostics.totalSubmissions.toLocaleString()}
+        />
+        <DiagnosticDetail
+          label="Max body bytes"
+          value={diagnostics.maxSubmissionBodyBytes.toLocaleString()}
+        />
+        <DiagnosticDetail
+          label="Rate limit window"
+          value={`${diagnostics.submissionRateLimitWindowMs.toLocaleString()} ms`}
+        />
+        <DiagnosticDetail
+          label="Rate limit max"
+          value={diagnostics.submissionRateLimitMax.toLocaleString()}
+        />
+      </dl>
+    </section>
+  );
+}
+
+function StatusBadge({ label, enabled }: { label: string; enabled: boolean }) {
+  return (
+    <span
+      className={
+        enabled
+          ? "rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+          : "rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-bold text-slate-600"
+      }
+    >
+      {label}: {enabled ? "yes" : "no"}
+    </span>
+  );
+}
+
+function DiagnosticDetail({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+        {label}
+      </dt>
+      <dd className="mt-1 break-words text-sm font-bold text-ink">{value}</dd>
     </div>
   );
 }
