@@ -49,13 +49,15 @@ export function ParticipantBackgroundForm() {
   }, []);
 
   useEffect(() => {
-    if (!session) {
-      return;
-    }
+    setSession((currentSession) => {
+      if (!currentSession) {
+        return currentSession;
+      }
 
-    const updatedSession = { ...session, participantProfile: profile };
-    saveStoredSession(updatedSession);
-    setSession(updatedSession);
+      const updatedSession = { ...currentSession, participantProfile: profile };
+      saveStoredSession(updatedSession);
+      return updatedSession;
+    });
   }, [profile]);
 
   const isComplete =
