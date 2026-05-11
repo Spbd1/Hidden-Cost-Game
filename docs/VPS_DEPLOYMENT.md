@@ -260,7 +260,21 @@ Only expose `3000` temporarily when debugging, and close it again immediately af
 
 ## 12. Update deployment
 
-From the project directory, pull the latest branch changes:
+From the project directory, create a database backup before changing running containers or applying migrations:
+
+```bash
+./scripts/backup-postgres.sh
+```
+
+The script stores timestamped SQL backups in `backups/`, for example `backups/hidden_cost_game_20260511_153000.sql`. It reads `POSTGRES_USER` and `POSTGRES_DB` from `.env` when present and uses the safe defaults `hcg` and `hidden_cost_game` otherwise. PostgreSQL stays private because the script runs `pg_dump` inside the Docker Compose `postgres` service; it does not expose port `5432`.
+
+Copy important backups off the VPS before updates or migrations. From your local computer, use `scp` with your real SSH user, server, and deployment path:
+
+```bash
+scp your-user@your-server:/path/to/hidden-cost-game/backups/hidden_cost_game_YYYYMMDD_HHMMSS.sql ./
+```
+
+Then pull the latest branch changes:
 
 ```bash
 git pull
@@ -284,36 +298,45 @@ Check logs after every update:
 docker compose logs -f app
 ```
 
-## 13. Backup notes
+## 13. Backup and restore notes
 
-The bundled PostgreSQL database stores its files in the Docker volume named `postgres_data`. Docker volumes persist when containers are recreated, but they are still on the VPS disk. Back up the database before risky changes, major updates, or server migrations.
+The bundled PostgreSQL database stores its files in the Docker volume named `postgres_data`. Docker volumes persist when containers are recreated, but they are still on the VPS disk. Back up the database before risky changes, major updates, migrations, or server moves.
 
-Create a backup directory:
-
-```bash
-mkdir -p backups
-```
-
-Basic PostgreSQL backup using `pg_dump` from the `postgres` container:
+Create a timestamped backup:
 
 ```bash
-docker compose exec -T postgres pg_dump -U hcg -d hidden_cost_game > backups/hidden_cost_game_$(date +%F_%H%M%S).sql
+./scripts/backup-postgres.sh
 ```
 
-If you changed `POSTGRES_USER` or `POSTGRES_DB` in `.env`, replace `hcg` and `hidden_cost_game` in the command.
+Backup files are written to the repository-local `backups/` directory, which is ignored by Git. Keep an off-server copy as well; a VPS disk failure, accidental deletion, or bad migration can affect both the Docker volume and local backup files.
+
+Copy a backup from the VPS to your local machine:
+
+```bash
+scp your-user@your-server:/path/to/hidden-cost-game/backups/hidden_cost_game_YYYYMMDD_HHMMSS.sql ./
+```
+
+Copy a local backup back to the VPS when you intentionally need to restore it:
+
+```bash
+scp ./hidden_cost_game_YYYYMMDD_HHMMSS.sql your-user@your-server:/path/to/hidden-cost-game/backups/
+```
 
 Important restore warning:
 
-- Restoring a database can overwrite or conflict with existing production data.
+- Restoring a database can overwrite, modify, duplicate, or conflict with existing production data.
 - Practice restore steps on a test server first.
 - Stop the app or put the site into maintenance mode before restoring production data.
+- Verify the backup file name, server, branch, and `.env` database settings before confirming a restore.
 - Keep an off-server copy of backup files, not only a copy inside the VPS.
 
-A restore command usually looks like this, but do not run it on production unless you are certain it targets the correct database:
+Restore only when you are certain the target database is correct:
 
 ```bash
-cat backups/hidden_cost_game_BACKUP_FILE.sql | docker compose exec -T postgres psql -U hcg -d hidden_cost_game
+./scripts/restore-postgres.sh backups/hidden_cost_game_YYYYMMDD_HHMMSS.sql
 ```
+
+The restore helper prints a large warning and requires you to type `RESTORE` before it streams the SQL file into the Docker Compose `postgres` service with `psql`. PostgreSQL remains private; no database port is exposed.
 
 ## 14. Final smoke test
 
