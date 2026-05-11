@@ -1,0 +1,297 @@
+# VPS Deployment Guide with Docker Compose
+
+This beginner-friendly guide deploys Hidden Cost Game on an Ubuntu 22.04 or 24.04 VPS using Docker Compose, PostgreSQL, and a reverse proxy for HTTPS.
+
+Assumptions:
+
+- You can SSH into a fresh Ubuntu 22.04/24.04 VPS.
+- Your domain already points to the VPS public IP address.
+- You run commands as a sudo-capable user.
+- The app will listen privately on `127.0.0.1:3000`; public traffic should go through HTTPS on ports 80 and 443.
+
+## 1. Server update
+
+Update package lists and installed packages first:
+
+```bash
+sudo apt update
+sudo apt upgrade -y
+```
+
+If the upgrade installs a new kernel or asks for a reboot, reboot before continuing:
+
+```bash
+sudo reboot
+```
+
+Reconnect with SSH after the server comes back online.
+
+## 2. Install required tools
+
+Install basic command-line tools used by the rest of this guide:
+
+```bash
+sudo apt install -y git curl nano ca-certificates
+```
+
+## 3. Install Docker from Docker's official apt repository
+
+Use Docker's official apt repository instead of only Ubuntu's default Docker packages.
+
+### Set up Docker's apt keyring
+
+```bash
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+```
+
+### Add the Docker apt repository
+
+```bash
+echo \
+  "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/ubuntu \
+  $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}") stable" | \
+  sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
+sudo apt update
+```
+
+### Install Docker Engine and Docker Compose plugin
+
+```bash
+sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+```
+
+### Check Docker versions
+
+```bash
+docker --version
+docker compose version
+```
+
+If you see a permission error when running `docker`, either prefix Docker commands with `sudo` or add your user to the `docker` group:
+
+```bash
+sudo usermod -aG docker $USER
+```
+
+Then log out and back in before retrying Docker commands.
+
+## 4. Clone the deployment branch
+
+Clone the exact branch and enter the project directory:
+
+```bash
+git clone --branch codex/improve-admin-dashboard-analytics https://github.com/Spbd1/Hidden-Cost-Game.git hidden-cost-game
+cd hidden-cost-game
+```
+
+## 5. Configure `.env`
+
+Create your private environment file from the example:
+
+```bash
+cp .env.example .env
+nano .env
+```
+
+Set production values before starting the app:
+
+```dotenv
+APP_BASE_URL="https://your-domain.com"
+ENABLE_SERVER_SUBMISSION="true"
+NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION="true"
+ADMIN_EXPORT_TOKEN="long random secret"
+POSTGRES_PASSWORD="long random password"
+GOOGLE_SHEETS_WEBHOOK_URL=""
+GOOGLE_SHEETS_WEBHOOK_SECRET=""
+```
+
+Replace `https://your-domain.com` with your real HTTPS domain.
+
+Required production values:
+
+- `APP_BASE_URL="https://your-domain.com"`: the public URL for the deployed site.
+- `ENABLE_SERVER_SUBMISSION="true"`: enables the server API that accepts participant submissions.
+- `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION="true"`: shows the submission UI in the browser; because this is a public build-time value, rebuild the app after changing it.
+- `ADMIN_EXPORT_TOKEN="long random secret"`: secret token used to open `/admin` and export CSV/JSON. Keep it private.
+- `POSTGRES_PASSWORD="long random password"`: password for the Docker PostgreSQL database. Keep it private and back up your data before changing it later.
+
+Optional Google Sheets values:
+
+- `GOOGLE_SHEETS_WEBHOOK_URL`: optional Google Apps Script web app URL for mirroring successful submissions to a Google Sheet.
+- `GOOGLE_SHEETS_WEBHOOK_SECRET`: optional shared secret used by the app and Apps Script webhook. Recommended when the Sheets webhook is enabled.
+
+Save and exit nano with `Ctrl+O`, `Enter`, then `Ctrl+X`.
+
+## 6. Generate strong secrets
+
+Generate random secrets on the VPS:
+
+```bash
+openssl rand -hex 32
+```
+
+Run the command once for `ADMIN_EXPORT_TOKEN`, once for `POSTGRES_PASSWORD`, and once for `GOOGLE_SHEETS_WEBHOOK_SECRET` if you enable the Sheets webhook.
+
+## 7. Start the app
+
+Build and start the app and database in the background:
+
+```bash
+docker compose up --build -d
+```
+
+Run database migrations after the containers are up:
+
+```bash
+docker compose exec app npm run db:migrate
+```
+
+## 8. Check health
+
+Check running containers:
+
+```bash
+docker compose ps
+```
+
+Watch app logs:
+
+```bash
+docker compose logs -f app
+```
+
+Press `Ctrl+C` to stop following logs.
+
+Check the local health endpoint from the VPS:
+
+```bash
+curl http://127.0.0.1:3000/api/health
+```
+
+A healthy app should return a JSON response.
+
+## 9. Reverse proxy with Caddy
+
+Use a reverse proxy so visitors reach the app over HTTPS. Caddy is beginner-friendly because it can automatically request and renew TLS certificates.
+
+Install Caddy on Ubuntu:
+
+```bash
+sudo apt install -y debian-keyring debian-archive-keyring apt-transport-https gnupg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' | sudo gpg --dearmor -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' | sudo tee /etc/apt/sources.list.d/caddy-stable.list
+sudo apt update
+sudo apt install -y caddy
+```
+
+Edit the Caddy configuration:
+
+```bash
+sudo nano /etc/caddy/Caddyfile
+```
+
+Use this minimal example, replacing `your-domain.com` with your real domain:
+
+```caddyfile
+your-domain.com {
+  reverse_proxy 127.0.0.1:3000
+}
+```
+
+Reload Caddy:
+
+```bash
+sudo systemctl reload caddy
+```
+
+Then open `https://your-domain.com` in your browser.
+
+## 10. Firewall
+
+Enable UFW and allow only SSH plus web traffic:
+
+```bash
+sudo ufw allow OpenSSH
+sudo ufw allow 80
+sudo ufw allow 443
+sudo ufw enable
+sudo ufw status
+```
+
+Do **not** open port `3000` publicly for normal production use. The Docker Compose file binds the app to `127.0.0.1:3000` so Caddy can reach it locally while the internet cannot reach it directly.
+
+Only expose `3000` temporarily when debugging, and close it again immediately afterward.
+
+## 11. Update deployment
+
+From the project directory, pull the latest branch changes:
+
+```bash
+git pull
+```
+
+Rebuild and restart containers:
+
+```bash
+docker compose up --build -d
+```
+
+Run database migrations:
+
+```bash
+docker compose exec app npm run db:migrate
+```
+
+Check logs after every update:
+
+```bash
+docker compose logs -f app
+```
+
+## 12. Backup notes
+
+The bundled PostgreSQL database stores its files in the Docker volume named `postgres_data`. Docker volumes persist when containers are recreated, but they are still on the VPS disk. Back up the database before risky changes, major updates, or server migrations.
+
+Create a backup directory:
+
+```bash
+mkdir -p backups
+```
+
+Basic PostgreSQL backup using `pg_dump` from the `postgres` container:
+
+```bash
+docker compose exec -T postgres pg_dump -U hcg -d hidden_cost_game > backups/hidden_cost_game_$(date +%F_%H%M%S).sql
+```
+
+If you changed `POSTGRES_USER` or `POSTGRES_DB` in `.env`, replace `hcg` and `hidden_cost_game` in the command.
+
+Important restore warning:
+
+- Restoring a database can overwrite or conflict with existing production data.
+- Practice restore steps on a test server first.
+- Stop the app or put the site into maintenance mode before restoring production data.
+- Keep an off-server copy of backup files, not only a copy inside the VPS.
+
+A restore command usually looks like this, but do not run it on production unless you are certain it targets the correct database:
+
+```bash
+cat backups/hidden_cost_game_BACKUP_FILE.sql | docker compose exec -T postgres psql -U hcg -d hidden_cost_game
+```
+
+## 13. Final smoke test
+
+After deployment and HTTPS setup, test the full production path:
+
+1. Open `https://your-domain.com`.
+2. Complete one full participant session.
+3. Submit the completed session at the end of the flow.
+4. Open `https://your-domain.com/admin`.
+5. Enter `ADMIN_EXPORT_TOKEN`.
+6. Export CSV and JSON.
+7. Verify the exported files contain the test submission.
+8. If `GOOGLE_SHEETS_WEBHOOK_URL` is enabled, verify a new row appears in the Google Sheet.
+
+Keep the test export and backup notes with your deployment records so future updates can be checked the same way.
