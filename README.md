@@ -172,70 +172,18 @@ For Docker Compose, `.env.example` also includes `POSTGRES_USER`, `POSTGRES_PASS
 
 ## Optional Google Sheets mirror
 
-PostgreSQL remains the primary source of truth for completed research submissions. You can also mirror a flattened summary row to a Google Sheet by deploying a Google Apps Script web app and setting `GOOGLE_SHEETS_WEBHOOK_URL`. If the Sheets webhook is missing, slow, invalid, or returns an error, `POST /api/submissions` still returns success to the participant after the PostgreSQL write succeeds; the webhook result is only logged server-side.
+PostgreSQL remains the primary source of truth for completed research submissions. You can also mirror a flattened summary row to a Google Sheet by deploying the ready-to-copy Google Apps Script receiver in [`docs/google-sheets-apps-script.js`](docs/google-sheets-apps-script.js) and setting `GOOGLE_SHEETS_WEBHOOK_URL`. If the Sheets webhook is missing, slow, invalid, or returns an error, `POST /api/submissions` still returns success to the participant after the PostgreSQL write succeeds; the webhook result is only logged server-side.
 
 Setup steps:
 
-1. Create a Google Sheet and add a sheet tab named `Submissions`.
-2. Open **Extensions → Apps Script**, create a web app script, and set a script property named `WEBHOOK_SECRET`.
-3. Deploy the Apps Script as a web app and copy its `/exec` URL into `.env` as `GOOGLE_SHEETS_WEBHOOK_URL`; set the same secret in `GOOGLE_SHEETS_WEBHOOK_SECRET`.
-4. Restart the app so the server process reads the new environment variables.
-5. Submit one complete test session and verify both the app logs and the new Google Sheet row.
+1. Create a Google Sheet. The script will create a `Submissions` tab if it does not already exist, and it will write the expected header row if row 1 is empty.
+2. Open **Extensions → Apps Script**, paste the contents of [`docs/google-sheets-apps-script.js`](docs/google-sheets-apps-script.js) into `Code.gs`, and save.
+3. In **Project Settings → Script properties**, add `WEBHOOK_SECRET` with the same long random value you will set as `GOOGLE_SHEETS_WEBHOOK_SECRET` in the app.
+4. Deploy the Apps Script as a web app and copy its `/exec` URL into `.env` as `GOOGLE_SHEETS_WEBHOOK_URL`; set the same secret in `GOOGLE_SHEETS_WEBHOOK_SECRET`.
+5. Restart the app so the server process reads the new environment variables.
+6. Submit one complete test session and verify both the app logs and the new Google Sheet row.
 
-A minimal Apps Script receiver that checks the shared secret from the JSON body is shown below. The app also sends an `Authorization: Bearer ...` header, but Apps Script web apps do not always expose request headers consistently, so this example validates `data.secret` and deliberately does not append the secret to the sheet row.
-
-```javascript
-function doPost(e) {
-  const expectedSecret = PropertiesService.getScriptProperties().getProperty("WEBHOOK_SECRET");
-  const data = JSON.parse(e.postData.contents || "{}");
-
-  if (!expectedSecret || data.secret !== expectedSecret) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, error: "unauthorized" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName("Submissions");
-  if (!sheet) {
-    return ContentService
-      .createTextOutput(JSON.stringify({ ok: false, error: "missing Submissions sheet" }))
-      .setMimeType(ContentService.MimeType.JSON);
-  }
-
-  sheet.appendRow([
-    new Date(),
-    data.serverSubmissionId,
-    data.submittedAt,
-    data.sessionId,
-    data.schemaVersion,
-    data.exportVersion,
-    data.assignedDisplayedProfile,
-    data.assignedHiddenProfile,
-    data.finalFinancialScore,
-    data.finalHealthScore,
-    data.fullTreatmentChoices,
-    data.partialTreatmentChoices,
-    data.skippedTreatmentChoices,
-    data.responsibilityShift,
-    data.constraintRecognitionShift,
-    data.protestLegitimacyShift,
-    data.ruleCorrectionSupportShift,
-    data.redistributionSupportShift,
-    data.revisionCondition,
-    data.attemptedPreRevealRevision,
-    data.usedRevisionOpportunity,
-    data.revealTimingCondition,
-    data.costVisibilityCondition,
-    data.explanationFrameCondition,
-    data.replayCompleted,
-    data.replayAssignmentCondition
-  ]);
-
-  return ContentService
-    .createTextOutput(JSON.stringify({ ok: true }))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-```
+The app sends the shared secret in the JSON body as `secret` because Google Apps Script web apps do not always expose request headers consistently. The provided script validates `data.secret` but deliberately excludes it from the `HEADERS` array so the secret is never appended to the sheet.
 
 ## Server pilot mode with Docker
 
