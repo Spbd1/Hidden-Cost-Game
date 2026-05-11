@@ -1,6 +1,6 @@
 {
   "exportVersion": "prototype-1.2",
-  "schemaVersion": "hidden-cost-game-research-schema-4",
+  "schemaVersion": "hidden-cost-game-research-schema-6",
   "sessionId": "hcg-example-session",
   "consentVersion": "pilot-consent-v1",
   "serverSubmissionStatus": "not_submitted",
@@ -182,7 +182,12 @@
       "pre": "individual choices",
       "post": "structural constraints"
     },
-    "explanationFrame": "explain-to-self"
+    "explanationFrame": "explain-to-self",
+    "costVisibilityCondition": null,
+    "hadAnyCostHint": false,
+    "hadStrongCostHint": false,
+    "replayAvailable": true,
+    "replayCompleted": false
   },
   "completeness": {
     "hasParticipantProfile": true,

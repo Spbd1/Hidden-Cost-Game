@@ -1,4 +1,4 @@
-import type { GameChoice, HiddenCostGameState, HiddenCostProfile, MedicalEvent } from "@/types/research";
+import type { GameChoice, HiddenCostGameState, HiddenCostProfile, MedicalEvent, ReplayGameState } from "@/types/research";
 
 export const STARTING_FINANCIAL_POINTS = 100;
 export const STARTING_HEALTH_POINTS = 100;
@@ -102,4 +102,34 @@ export function getHealthAfterChoice(choice: GameChoice, healthBefore: number): 
 
 export function formatPoints(value: number): string {
   return Number.isInteger(value) ? value.toString() : value.toFixed(1);
+}
+
+
+export function createReplayGameState(originalGame: HiddenCostGameState): ReplayGameState {
+  const assignmentCondition = Math.random() < 0.5 ? "same-hidden-profile" : "switched-hidden-profile";
+  const hiddenProfile = assignmentCondition === "same-hidden-profile" ? originalGame.hiddenProfile : getOppositeHiddenProfile(originalGame.hiddenProfile);
+  const profile = getProfileForHiddenProfile(hiddenProfile);
+
+  return {
+    replayId: `hcg-replay-${crypto.randomUUID()}`,
+    assignmentCondition,
+    displayedProfile: originalGame.displayedProfile,
+    hiddenProfile,
+    treatmentCostMultiplier: profile.treatmentCostMultiplier,
+    financialPoints: STARTING_FINANCIAL_POINTS,
+    healthPoints: STARTING_HEALTH_POINTS,
+    currentRoundIndex: 0,
+    startedAt: new Date().toISOString(),
+    rounds: [],
+    finalFinancialScore: STARTING_FINANCIAL_POINTS,
+    finalHealthScore: STARTING_HEALTH_POINTS,
+  };
+}
+
+export function getOppositeHiddenProfile(hiddenProfile: HiddenCostGameState["hiddenProfile"]): HiddenCostGameState["hiddenProfile"] {
+  return hiddenProfile === "High coverage" ? "Low coverage" : "High coverage";
+}
+
+export function getProfileForHiddenProfile(hiddenProfile: HiddenCostGameState["hiddenProfile"]): HiddenCostProfile {
+  return hiddenCostProfiles.find((profile) => profile.hiddenProfile === hiddenProfile) ?? hiddenCostProfiles[0];
 }

@@ -6,14 +6,16 @@ import { Card } from "@/components/Card";
 import {
   ROUND_INCOME_POINTS,
   createHiddenCostGameState,
+  createReplayGameState,
   formatPoints,
   getHealthAfterChoice,
   getPaidCost,
   getTreatmentCost,
   medicalEvents,
 } from "@/utils/game";
+import { isPostRevealSurveyComplete } from "@/utils/researchMetrics";
 import { getStoredSession, saveStoredSession } from "@/utils/session";
-import type { GameChoice, HiddenCostGameState, ResearchSession } from "@/types/research";
+import type { GameChoice, HiddenCostGameState, ReplayGameState, ResearchSession } from "@/types/research";
 
 const choiceLabels: Record<GameChoice, string> = {
   "full-treatment": "Full treatment",
@@ -21,14 +23,42 @@ const choiceLabels: Record<GameChoice, string> = {
   "skip-treatment": "Skip treatment",
 };
 
-export function HiddenCostGame() {
+export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "replay" }) {
   const router = useRouter();
   const [session, setSession] = useState<ResearchSession | null>(null);
   const [game, setGame] = useState<HiddenCostGameState | null>(null);
   const [roundStartedAt, setRoundStartedAt] = useState(() => Date.now());
 
   useEffect(() => {
-    const storedSession = getStoredSession("game");
+    const storedSession = getStoredSession(mode === "replay" ? "individual-results" : "game");
+
+    if (mode === "replay") {
+      if (!storedSession.game?.completedAt || !isPostRevealSurveyComplete(storedSession.postRevealSurvey)) {
+        const redirectStage = storedSession.game?.completedAt ? "post-reveal" : "game";
+        saveStoredSession({ ...storedSession, currentStage: redirectStage });
+        router.replace(storedSession.game?.completedAt ? "/post-reveal-survey" : "/game");
+        return;
+      }
+
+      if (storedSession.replayGame?.completedAt) {
+        saveStoredSession({ ...storedSession, currentStage: "individual-results" });
+        router.replace("/individual-results");
+        return;
+      }
+
+      const nextReplayGame = storedSession.replayGame ?? createReplayGameState(storedSession.game);
+      const nextSession = {
+        ...storedSession,
+        currentStage: "individual-results" as const,
+        replayGame: nextReplayGame,
+      };
+
+      saveStoredSession(nextSession);
+      setSession(nextSession);
+      setGame(nextReplayGame);
+      setRoundStartedAt(Date.now());
+      return;
+    }
 
     if (!storedSession.participantProfile) {
       const backgroundSession: ResearchSession = {
@@ -63,7 +93,7 @@ export function HiddenCostGame() {
     setSession(nextSession);
     setGame(nextGame);
     setRoundStartedAt(Date.now());
-  }, [router]);
+  }, [mode, router]);
 
   const currentEvent = game ? medicalEvents[game.currentRoundIndex] : undefined;
   const actualFullCost = useMemo(() => {
@@ -114,26 +144,39 @@ export function HiddenCostGame() {
       },
     ];
     const isComplete = updatedRounds.length === medicalEvents.length;
-    const updatedGame: HiddenCostGameState = {
+    const updatedGame: HiddenCostGameState | ReplayGameState = {
       ...game,
       financialPoints: scoreAfter,
       healthPoints: healthAfter,
       currentRoundIndex: isComplete ? game.currentRoundIndex : game.currentRoundIndex + 1,
       completedAt: isComplete ? timestamp : undefined,
       rounds: updatedRounds,
+      ...("replayId" in game
+        ? {
+            finalFinancialScore: scoreAfter,
+            finalHealthScore: healthAfter,
+          }
+        : {}),
     };
-    const updatedSession: ResearchSession = {
-      ...session,
-      currentStage: isComplete ? "visible-results" : "game",
-      game: updatedGame,
-    };
+    const updatedSession: ResearchSession =
+      mode === "replay"
+        ? {
+            ...session,
+            currentStage: "individual-results",
+            replayGame: updatedGame as ReplayGameState,
+          }
+        : {
+            ...session,
+            currentStage: isComplete ? "visible-results" : "game",
+            game: updatedGame,
+          };
 
     saveStoredSession(updatedSession);
     setSession(updatedSession);
     setGame(updatedGame);
 
     if (isComplete) {
-      router.push("/visible-results");
+      router.push(mode === "replay" ? "/individual-results" : "/visible-results");
       return;
     }
 
@@ -150,10 +193,17 @@ export function HiddenCostGame() {
 
   return (
     <Card className="space-y-6">
+      {mode === "replay" ? (
+        <div className="rounded-2xl border border-research-100 bg-research-50 p-5 leading-7 text-research-900">
+          <p className="font-semibold">This is an optional second playthrough.</p>
+          <p>No additional survey questions will be asked. Your choices in this replay are saved separately from your first game.</p>
+        </div>
+      ) : null}
+
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div>
           <p className="text-sm font-semibold uppercase tracking-[0.18em] text-research-700">
-            Round {currentEvent.roundNumber} of {medicalEvents.length}
+            {mode === "replay" ? "Replay round" : "Round"} {currentEvent.roundNumber} of {medicalEvents.length}
           </p>
           <h2 className="mt-2 text-3xl font-semibold text-ink">{currentEvent.eventName}</h2>
           <p className="mt-3 max-w-2xl leading-7 text-slate-600">
