@@ -1,6 +1,5 @@
 import type { NextRequest } from "next/server";
-import { NextResponse } from "next/server";
-import { validateAdminRequest } from "@/lib/adminAuth.server";
+import { adminJsonResponse, validateAdminRequest } from "@/lib/adminAuth.server";
 import { AdminSubmissionError, adminSubmissionPageJson, listAdminSubmissions } from "@/lib/adminSubmissions";
 
 export const runtime = "nodejs";
@@ -13,12 +12,12 @@ export async function GET(request: NextRequest) {
 
   try {
     const page = await listAdminSubmissions(request.nextUrl.searchParams);
-    return NextResponse.json(adminSubmissionPageJson(page));
+    return adminJsonResponse(adminSubmissionPageJson(page));
   } catch (error) {
     if (error instanceof AdminSubmissionError) {
-      return NextResponse.json({ ok: false, error: error.message }, { status: error.status });
+      return adminJsonResponse({ ok: false, error: error.message }, { status: error.status });
     }
 
-    return NextResponse.json({ ok: false, error: "Unable to retrieve submissions." }, { status: 500 });
+    return adminJsonResponse({ ok: false, error: "Unable to retrieve submissions." }, { status: 500 });
   }
 }

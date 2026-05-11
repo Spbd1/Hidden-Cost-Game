@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
 
   const validation = researchExportSchema.safeParse(parsedJson);
   if (!validation.success) {
-    return NextResponse.json(
+    return submissionJsonResponse(
       {
         ok: false,
         error: "Submission must be a complete research export JSON object.",
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
       submittedAt,
     });
 
-    return NextResponse.json(
+    return submissionJsonResponse(
       {
         ok: true,
         serverSubmissionId,
@@ -122,7 +122,17 @@ export async function POST(request: NextRequest) {
 }
 
 function jsonError(error: string, status: number): NextResponse {
-  return NextResponse.json({ ok: false, error }, { status });
+  return submissionJsonResponse({ ok: false, error }, { status });
+}
+
+function submissionJsonResponse(body: unknown, init: ResponseInit = {}): NextResponse {
+  const headers = new Headers(init.headers);
+  headers.set("Cache-Control", "no-store");
+
+  return NextResponse.json(body, {
+    ...init,
+    headers,
+  });
 }
 
 function getClientKey(request: NextRequest): string {
