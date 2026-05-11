@@ -1,7 +1,6 @@
 import type { ValidResearchExport } from "@/lib/researchExportSchema";
 
 const WEBHOOK_TIMEOUT_MS = 5_000;
-const MAX_PAYLOAD_JSON_BYTES = 100_000;
 
 type SubmissionWebhookMetadata = {
   serverSubmissionId: string;
@@ -10,7 +9,7 @@ type SubmissionWebhookMetadata = {
 
 type GoogleSheetsSubmissionRow = {
   secret?: string;
-  type: "hidden-cost-game-submission";
+  receivedAt: string;
   serverSubmissionId: string;
   submittedAt: string;
   sessionId: string;
@@ -36,7 +35,8 @@ type GoogleSheetsSubmissionRow = {
   explanationFrameCondition: string | null;
   replayCompleted: boolean;
   replayAssignmentCondition: string | null;
-  payloadJson?: string;
+  memoryDistortionMagnitude: number | null;
+  rememberedPrimaryAttributionMatchesOriginal: boolean | null;
 };
 
 export async function sendSubmissionToGoogleSheets(
@@ -91,7 +91,7 @@ function buildSubmissionRow(
 ): GoogleSheetsSubmissionRow {
   const row: GoogleSheetsSubmissionRow = {
     secret: process.env.GOOGLE_SHEETS_WEBHOOK_SECRET?.trim() || undefined,
-    type: "hidden-cost-game-submission",
+    receivedAt: new Date().toISOString(),
     serverSubmissionId: metadata.serverSubmissionId,
     submittedAt: metadata.submittedAt instanceof Date ? metadata.submittedAt.toISOString() : metadata.submittedAt,
     sessionId: payload.sessionId,
@@ -118,12 +118,10 @@ function buildSubmissionRow(
     explanationFrameCondition: payload.explanationFrameCondition?.condition ?? null,
     replayCompleted: payload.computedMetrics.replayCompleted,
     replayAssignmentCondition: payload.computedMetrics.replayAssignmentCondition ?? payload.replayGame?.assignmentCondition ?? null,
+    memoryDistortionMagnitude: payload.computedMetrics.memoryDistortionMagnitude ?? null,
+    rememberedPrimaryAttributionMatchesOriginal:
+      payload.computedMetrics.rememberedPrimaryAttributionMatchesOriginal ?? null,
   };
-
-  const payloadJson = JSON.stringify(payload);
-  if (Buffer.byteLength(payloadJson, "utf8") <= MAX_PAYLOAD_JSON_BYTES) {
-    row.payloadJson = payloadJson;
-  }
 
   return row;
 }

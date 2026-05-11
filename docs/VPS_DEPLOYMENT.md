@@ -119,7 +119,7 @@ Required production values:
 
 Optional Google Sheets values:
 
-- `GOOGLE_SHEETS_WEBHOOK_URL`: optional Google Apps Script web app URL for mirroring successful submissions to a Google Sheet.
+- `GOOGLE_SHEETS_WEBHOOK_URL`: optional Google Apps Script web app URL for mirroring successful submissions to a Google Sheet. Use the ready-to-copy receiver in `docs/google-sheets-apps-script.js`.
 - `GOOGLE_SHEETS_WEBHOOK_SECRET`: optional shared secret used by the app and Apps Script webhook. Recommended when the Sheets webhook is enabled.
 
 Save and exit nano with `Ctrl+O`, `Enter`, then `Ctrl+X`.
@@ -326,6 +326,6 @@ After deployment and HTTPS setup, test the full production path:
 5. Enter `ADMIN_EXPORT_TOKEN`.
 6. Export CSV and JSON.
 7. Verify the exported files contain the test submission.
-8. If `GOOGLE_SHEETS_WEBHOOK_URL` is enabled, verify a new row appears in the Google Sheet.
+8. If `GOOGLE_SHEETS_WEBHOOK_URL` is enabled, verify a new row appears in the Google Sheet. The recommended Apps Script receiver is in `docs/google-sheets-apps-script.js`; it creates the `Submissions` headers on first run and rejects requests whose JSON body does not contain the matching `secret`.
 
 Keep the test export and backup notes with your deployment records so future updates can be checked the same way.
