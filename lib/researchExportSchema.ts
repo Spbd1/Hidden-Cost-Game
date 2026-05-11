@@ -122,6 +122,10 @@ export const preRevealSurveySchema = z
 
 export const postRevealSurveySchema = z
   .object({
+    rememberedPrimaryAttribution: z.string().min(1),
+    rememberedIndividualResponsibility: likertSchema,
+    rememberedConstraintSuspicion: likertSchema,
+    rememberedConfidence: likertSchema,
     revisedPrimaryAttribution: z.string().min(1),
     revisedIndividualResponsibility: likertSchema,
     perceivedStructuralImpact: likertSchema,
@@ -148,6 +152,11 @@ export const computedMetricsSchema = z
     careAvoidance: z.number(),
     delayedReveal: z.boolean(),
     standByInitialInterpretation: likertSchema.optional(),
+    rememberedResponsibilityError: z.number(),
+    rememberedConstraintSuspicionError: z.number(),
+    rememberedPrimaryAttributionMatchesOriginal: z.boolean(),
+    memoryConfidence: likertSchema,
+    memoryDistortionMagnitude: z.number().nonnegative(),
     attributionCategoryShift: z
       .object({
         pre: z.string().min(1),

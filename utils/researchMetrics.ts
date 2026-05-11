@@ -12,8 +12,8 @@ import type {
   TreatmentChoiceCounts,
 } from "@/types/research";
 
-export const RESEARCH_EXPORT_VERSION = "prototype-1.1";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-2";
+export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-3";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -43,7 +43,11 @@ export function isPostRevealSurveyComplete(survey: PostRevealSurveyAnswers | und
   const openLength = survey?.openRevision.trim().length ?? 0;
 
   return Boolean(
-    survey?.revisedPrimaryAttribution &&
+    survey?.rememberedPrimaryAttribution &&
+      survey.rememberedIndividualResponsibility > 0 &&
+      survey.rememberedConstraintSuspicion > 0 &&
+      survey.rememberedConfidence > 0 &&
+      survey.revisedPrimaryAttribution &&
       survey.revisedIndividualResponsibility > 0 &&
       survey.perceivedStructuralImpact > 0 &&
       survey.postProtestLegitimacy > 0 &&
@@ -114,6 +118,10 @@ export function calculateComputedResearchMetrics({
   preRevealCommitment?: ResearchSession["preRevealCommitment"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
+  const originalPreRevealSurvey = preRevealSurveyOriginal ?? preRevealSurvey;
+  const rememberedResponsibilityError = postRevealSurvey.rememberedIndividualResponsibility - originalPreRevealSurvey.individualResponsibility;
+  const rememberedConstraintSuspicionError = postRevealSurvey.rememberedConstraintSuspicion - originalPreRevealSurvey.constraintSuspicion;
+  const memoryDistortionMagnitude = Math.abs(rememberedResponsibilityError) + Math.abs(rememberedConstraintSuspicionError);
   const responsibilityRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.individualResponsibility - preRevealSurveyOriginal.individualResponsibility : undefined;
   const constraintSuspicionRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.constraintSuspicion - preRevealSurveyOriginal.constraintSuspicion : undefined;
   const protestLegitimacyRevisionDelta = preRevealSurveyRevisedAfterReveal && preRevealSurveyOriginal ? preRevealSurveyRevisedAfterReveal.protestLegitimacy - preRevealSurveyOriginal.protestLegitimacy : undefined;
@@ -145,6 +153,11 @@ export function calculateComputedResearchMetrics({
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
     delayedReveal: revealTimingCondition?.condition === "delayed-reveal",
     ...(preRevealCommitment ? { standByInitialInterpretation: preRevealCommitment.standByInitialInterpretation } : {}),
+    rememberedResponsibilityError,
+    rememberedConstraintSuspicionError,
+    rememberedPrimaryAttributionMatchesOriginal: postRevealSurvey.rememberedPrimaryAttribution === originalPreRevealSurvey.primaryAttribution,
+    memoryConfidence: postRevealSurvey.rememberedConfidence,
+    memoryDistortionMagnitude: roundMetric(memoryDistortionMagnitude),
     attributionCategoryShift: {
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,

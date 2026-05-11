@@ -102,6 +102,10 @@ export type PreRevealSurveyAnswers = {
 };
 
 export type PostRevealSurveyAnswers = {
+  rememberedPrimaryAttribution: string;
+  rememberedIndividualResponsibility: number;
+  rememberedConstraintSuspicion: number;
+  rememberedConfidence: number;
   revisedPrimaryAttribution: string;
   revisedIndividualResponsibility: number;
   perceivedStructuralImpact: number;
@@ -188,6 +192,11 @@ export interface ComputedResearchMetrics {
   revisionMagnitude?: number;
   delayedReveal: boolean;
   standByInitialInterpretation?: number;
+  rememberedResponsibilityError: number;
+  rememberedConstraintSuspicionError: number;
+  rememberedPrimaryAttributionMatchesOriginal: boolean;
+  memoryConfidence: number;
+  memoryDistortionMagnitude: number;
 }
 
 export interface ResearchExportAssignedProfile {

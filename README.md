@@ -368,6 +368,7 @@ Implemented measures include:
 - **Information sufficiency**: perceived adequacy of available information before the reveal.
 - **Structural impact**: post-reveal perceived effect of the hidden cost difference.
 - **Perspective change**: post-reveal reported change in views of lower-scoring players.
+- **Remembered initial judgment**: post-reveal memory of the participant's pre-reveal attribution, responsibility rating, constraint-suspicion rating, and confidence in that memory.
 
 ## Computed metrics
 
@@ -384,6 +385,11 @@ Computed metrics are derived from game and survey responses for prototype analys
 - **`burden`**: total treatment cost paid divided by total available income.
 - **`careAvoidance`**: skipped treatments plus half of partial treatments.
 - **`attributionCategoryShift`**: pre-reveal primary attribution compared with post-reveal revised primary attribution.
+- **`rememberedResponsibilityError`**: remembered pre-reveal responsibility minus the original pre-reveal responsibility rating.
+- **`rememberedConstraintSuspicionError`**: remembered pre-reveal constraint suspicion minus the original pre-reveal constraint-suspicion rating.
+- **`rememberedPrimaryAttributionMatchesOriginal`**: whether remembered and original pre-reveal primary attribution match.
+- **`memoryConfidence`**: confidence in memory of the initial interpretation.
+- **`memoryDistortionMagnitude`**: absolute remembered responsibility error plus absolute remembered constraint-suspicion error.
 
 ## Contact and collaboration
 

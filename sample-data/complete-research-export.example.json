@@ -1,6 +1,6 @@
 {
-  "exportVersion": "prototype-1.1",
-  "schemaVersion": "research-export-v1",
+  "exportVersion": "prototype-1.2",
+  "schemaVersion": "hidden-cost-game-research-schema-3",
   "sessionId": "hcg-example-session",
   "consentVersion": "pilot-consent-v1",
   "serverSubmissionStatus": "not_submitted",
@@ -143,6 +143,10 @@
     "openExplanation": "This is fake sample text for validating a complete export."
   },
   "postRevealSurvey": {
+    "rememberedPrimaryAttribution": "individual choices",
+    "rememberedIndividualResponsibility": 4,
+    "rememberedConstraintSuspicion": 4,
+    "rememberedConfidence": 5,
     "revisedPrimaryAttribution": "structural constraints",
     "revisedIndividualResponsibility": 3,
     "perceivedStructuralImpact": 6,
@@ -164,6 +168,12 @@
     "perspectiveChange": 6,
     "burden": 0.775,
     "careAvoidance": 1.5,
+    "delayedReveal": false,
+    "rememberedResponsibilityError": -1,
+    "rememberedConstraintSuspicionError": 1,
+    "rememberedPrimaryAttributionMatchesOriginal": true,
+    "memoryConfidence": 5,
+    "memoryDistortionMagnitude": 2,
     "attributionCategoryShift": {
       "pre": "individual choices",
       "post": "structural constraints"

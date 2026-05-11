@@ -40,6 +40,7 @@ Computed metrics summarize analysis-ready outcomes, including:
 - `ruleCorrectionSupportShift` — change in support for correcting the rules.
 - `redistributionSupportShift` — change in redistributive support.
 - `certaintyCorrection`, `informationCaution`, and `perspectiveChange` — additional post-reveal interpretation and reflection measures.
+- `rememberedResponsibilityError`, `rememberedConstraintSuspicionError`, `rememberedPrimaryAttributionMatchesOriginal`, `memoryConfidence`, and `memoryDistortionMagnitude` — post-reveal memory-of-initial-judgment measures compared against the original pre-reveal responses when available.
 
 ## Ethics and limitations
 
