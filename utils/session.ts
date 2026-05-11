@@ -65,6 +65,7 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
     participantProfile: candidate.participantProfile,
     responses: candidate.responses ?? {},
     game: candidate.game,
+    replayGame: candidate.replayGame,
     preRevealSurvey: candidate.preRevealSurvey,
     preRevealSurveyOriginal: candidate.preRevealSurveyOriginal ?? (candidate.preRevealSurveyCompletedAt ? candidate.preRevealSurvey : undefined),
     preRevealSurveyRevisedAfterReveal: candidate.preRevealSurveyRevisedAfterReveal,

@@ -13,6 +13,7 @@ const revisionAccessConditionSchema = z.enum(["revision-unlocked", "revision-loc
 const revealTimingConditionNameSchema = z.enum(["immediate-reveal", "delayed-reveal"]);
 const explanationFrameConditionNameSchema = z.enum(["explain-to-self", "explain-to-other"]);
 const costVisibilityConditionNameSchema = z.enum(["no-cost-info", "partial-cost-hint", "full-cost-preview"]);
+const replayAssignmentConditionSchema = z.enum(["same-hidden-profile", "switched-hidden-profile"]);
 
 export const revisionAccessSchema = z
   .object({
@@ -122,6 +123,24 @@ export const gameRoundSchema = z
   })
   .passthrough();
 
+export const replayGameSchema = z
+  .object({
+    replayId: z.string().min(1),
+    startedAt: isoDateStringSchema,
+    completedAt: isoDateStringSchema.optional(),
+    assignmentCondition: replayAssignmentConditionSchema,
+    displayedProfile: displayedProfileSchema,
+    hiddenProfile: hiddenProfileSchema,
+    treatmentCostMultiplier: z.number().positive(),
+    financialPoints: z.number(),
+    healthPoints: z.number(),
+    currentRoundIndex: z.number().int().nonnegative(),
+    rounds: z.array(gameRoundSchema),
+    finalFinancialScore: z.number(),
+    finalHealthScore: z.number(),
+  })
+  .passthrough();
+
 export const preRevealSurveySchema = z
   .object({
     primaryAttribution: z.string().min(1),
@@ -177,6 +196,22 @@ export const computedMetricsSchema = z
     costVisibilityCondition: costVisibilityConditionNameSchema.nullable(),
     hadAnyCostHint: z.boolean(),
     hadStrongCostHint: z.boolean(),
+    replayAvailable: z.boolean(),
+    replayCompleted: z.boolean(),
+    replayAssignmentCondition: replayAssignmentConditionSchema.optional(),
+    replayHiddenProfile: hiddenProfileSchema.optional(),
+    replayFullTreatmentChoices: z.number().int().nonnegative().optional(),
+    replayPartialTreatmentChoices: z.number().int().nonnegative().optional(),
+    replaySkippedTreatmentChoices: z.number().int().nonnegative().optional(),
+    replayFinalFinancialScore: z.number().optional(),
+    replayFinalHealthScore: z.number().optional(),
+    replayTotalTreatmentCostPaid: z.number().nonnegative().optional(),
+    replayCareAvoidance: z.number().optional(),
+    behaviorChangeFullTreatment: z.number().optional(),
+    behaviorChangePartialTreatment: z.number().optional(),
+    behaviorChangeSkippedTreatment: z.number().optional(),
+    behaviorChangeCareAvoidance: z.number().optional(),
+    behaviorChangeCostBurden: z.number().optional(),
     attributionCategoryShift: z
       .object({
         pre: z.string().min(1),
@@ -228,6 +263,7 @@ export const researchExportSchema = z
     assignedProfile: assignedProfileSchema,
     gameSummary: gameSummarySchema,
     gameRounds: z.array(gameRoundSchema).min(1),
+    replayGame: replayGameSchema.optional(),
     preRevealSurvey: preRevealSurveySchema,
     preRevealSurveyOriginal: preRevealSurveySchema.optional(),
     preRevealSurveyRevisedAfterReveal: preRevealSurveySchema.optional(),

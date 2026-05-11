@@ -138,6 +138,7 @@ function IndividualResults({
     preRevealSurveyOriginal: session.preRevealSurveyOriginal,
     explanationFrameCondition: session.explanationFrameCondition,
     costVisibilityCondition: session.costVisibilityCondition,
+    replayGame: session.replayGame,
   });
   const interpretations = buildParticipantInterpretation(computedMetrics);
 
@@ -256,6 +257,22 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Cost visibility condition", metrics.costVisibilityCondition ?? "Not assigned"],
     ["Had any cost hint", metrics.hadAnyCostHint ? "Yes" : "No"],
     ["Had strong cost hint", metrics.hadStrongCostHint ? "Yes" : "No"],
+    ["Replay available", metrics.replayAvailable ? "Yes" : "No"],
+    ["Replay completed", metrics.replayCompleted ? "Yes" : "No"],
+    ["Replay assignment", metrics.replayAssignmentCondition ?? "Not played"],
+    ["Replay hidden profile", metrics.replayHiddenProfile ?? "Not played"],
+    ["Replay full treatment choices", metrics.replayFullTreatmentChoices ?? "Not played"],
+    ["Replay partial treatment choices", metrics.replayPartialTreatmentChoices ?? "Not played"],
+    ["Replay skipped treatment choices", metrics.replaySkippedTreatmentChoices ?? "Not played"],
+    ["Replay final financial score", metrics.replayFinalFinancialScore ?? "Not played"],
+    ["Replay final health score", metrics.replayFinalHealthScore ?? "Not played"],
+    ["Replay total treatment cost paid", metrics.replayTotalTreatmentCostPaid ?? "Not played"],
+    ["Replay care avoidance", metrics.replayCareAvoidance ?? "Not played"],
+    ["Behavior change: full treatment", metrics.behaviorChangeFullTreatment ?? "Not played"],
+    ["Behavior change: partial treatment", metrics.behaviorChangePartialTreatment ?? "Not played"],
+    ["Behavior change: skipped treatment", metrics.behaviorChangeSkippedTreatment ?? "Not played"],
+    ["Behavior change: care avoidance", metrics.behaviorChangeCareAvoidance ?? "Not played"],
+    ["Behavior change: cost burden", metrics.behaviorChangeCostBurden ?? "Not played"],
   ] as const;
 
   return (

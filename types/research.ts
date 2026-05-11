@@ -40,6 +40,7 @@ export interface ParticipantBackground {
 }
 
 export type HiddenProfileMeaning = "High coverage" | "Low coverage";
+export type ReplayAssignmentCondition = "same-hidden-profile" | "switched-hidden-profile";
 export type DisplayedProfile = "Profile A" | "Profile B";
 export type GameChoice = "full-treatment" | "partial-treatment" | "skip-treatment";
 export type MedicalRiskLevel = "low" | "medium" | "high";
@@ -87,6 +88,13 @@ export interface HiddenCostGameState {
   startedAt: string;
   completedAt?: string;
   rounds: GameRoundData[];
+}
+
+export interface ReplayGameState extends HiddenCostGameState {
+  replayId: string;
+  assignmentCondition: ReplayAssignmentCondition;
+  finalFinancialScore: number;
+  finalHealthScore: number;
 }
 
 export type PreRevealSurveyAnswers = {
@@ -213,6 +221,22 @@ export interface ComputedResearchMetrics {
   costVisibilityCondition: CostVisibilityConditionName | null;
   hadAnyCostHint: boolean;
   hadStrongCostHint: boolean;
+  replayAvailable: boolean;
+  replayCompleted: boolean;
+  replayAssignmentCondition?: ReplayAssignmentCondition;
+  replayHiddenProfile?: HiddenProfileMeaning;
+  replayFullTreatmentChoices?: number;
+  replayPartialTreatmentChoices?: number;
+  replaySkippedTreatmentChoices?: number;
+  replayFinalFinancialScore?: number;
+  replayFinalHealthScore?: number;
+  replayTotalTreatmentCostPaid?: number;
+  replayCareAvoidance?: number;
+  behaviorChangeFullTreatment?: number;
+  behaviorChangePartialTreatment?: number;
+  behaviorChangeSkippedTreatment?: number;
+  behaviorChangeCareAvoidance?: number;
+  behaviorChangeCostBurden?: number;
 }
 
 export interface ResearchExportAssignedProfile {
@@ -246,6 +270,7 @@ export interface ResearchExport {
   assignedProfile: ResearchExportAssignedProfile;
   gameSummary: GameSummary;
   gameRounds: GameRoundData[];
+  replayGame?: ReplayGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
   preRevealSurveyOriginal?: PreRevealSurveyAnswers;
   preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;
@@ -274,6 +299,7 @@ export interface ResearchSession {
   participantProfile?: ParticipantProfile;
   responses: Record<string, unknown>;
   game?: HiddenCostGameState;
+  replayGame?: ReplayGameState;
   preRevealSurvey?: PreRevealSurveyAnswers;
   preRevealSurveyOriginal?: PreRevealSurveyAnswers;
   preRevealSurveyRevisedAfterReveal?: PreRevealSurveyAnswers;

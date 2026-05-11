@@ -13,7 +13,7 @@ import type {
 } from "@/types/research";
 
 export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-5";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-6";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -108,6 +108,7 @@ export function calculateComputedResearchMetrics({
   preRevealCommitment,
   explanationFrameCondition,
   costVisibilityCondition,
+  replayGame,
 }: {
   game: HiddenCostGameState;
   preRevealSurvey: PreRevealSurveyAnswers;
@@ -120,6 +121,7 @@ export function calculateComputedResearchMetrics({
   preRevealCommitment?: ResearchSession["preRevealCommitment"];
   explanationFrameCondition?: ResearchSession["explanationFrameCondition"];
   costVisibilityCondition?: ResearchSession["costVisibilityCondition"];
+  replayGame?: ResearchSession["replayGame"];
 }): ComputedResearchMetrics {
   const summary = calculateGameSummary(game);
   const originalPreRevealSurvey = preRevealSurveyOriginal ?? preRevealSurvey;
@@ -144,6 +146,11 @@ export function calculateComputedResearchMetrics({
   ];
   const hasRevisionComparison = revisionDeltas.every((delta): delta is number => typeof delta === "number");
   const costVisibilityConditionName = costVisibilityCondition?.condition ?? null;
+  const originalCostBurden = roundMetric(summary.totalTreatmentCostPaid / Math.max(summary.totalIncome, 1));
+  const replayCompleted = Boolean(replayGame?.completedAt);
+  const replaySummary = replayCompleted && replayGame ? calculateGameSummary(replayGame) : null;
+  const replayCostBurden = replaySummary ? roundMetric(replaySummary.totalTreatmentCostPaid / Math.max(replaySummary.totalIncome, 1)) : undefined;
+  const replayCareAvoidance = replaySummary ? replaySummary.skippedTreatmentChoices + 0.5 * replaySummary.partialTreatmentChoices : undefined;
 
   return {
     responsibilityShift: postRevealSurvey.revisedIndividualResponsibility - preRevealSurvey.individualResponsibility,
@@ -154,7 +161,7 @@ export function calculateComputedResearchMetrics({
     certaintyCorrection: preRevealSurvey.confidence - postRevealSurvey.initialJudgmentAccuracy,
     informationCaution: 8 - preRevealSurvey.informationSufficiency,
     perspectiveChange: postRevealSurvey.perspectiveChange,
-    burden: roundMetric(summary.totalTreatmentCostPaid / Math.max(summary.totalIncome, 1)),
+    burden: originalCostBurden,
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
     delayedReveal: revealTimingCondition?.condition === "delayed-reveal",
     ...(preRevealCommitment ? { standByInitialInterpretation: preRevealCommitment.standByInitialInterpretation } : {}),
@@ -167,6 +174,26 @@ export function calculateComputedResearchMetrics({
     costVisibilityCondition: costVisibilityConditionName,
     hadAnyCostHint: costVisibilityConditionName === "partial-cost-hint" || costVisibilityConditionName === "full-cost-preview",
     hadStrongCostHint: costVisibilityConditionName === "full-cost-preview",
+    replayAvailable: true,
+    replayCompleted,
+    ...(replaySummary && replayGame
+      ? {
+          replayAssignmentCondition: replayGame.assignmentCondition,
+          replayHiddenProfile: replayGame.hiddenProfile,
+          replayFullTreatmentChoices: replaySummary.fullTreatmentChoices,
+          replayPartialTreatmentChoices: replaySummary.partialTreatmentChoices,
+          replaySkippedTreatmentChoices: replaySummary.skippedTreatmentChoices,
+          replayFinalFinancialScore: replaySummary.finalFinancialScore,
+          replayFinalHealthScore: replaySummary.finalHealthScore,
+          replayTotalTreatmentCostPaid: replaySummary.totalTreatmentCostPaid,
+          replayCareAvoidance: replayCareAvoidance!,
+          behaviorChangeFullTreatment: replaySummary.fullTreatmentChoices - summary.fullTreatmentChoices,
+          behaviorChangePartialTreatment: replaySummary.partialTreatmentChoices - summary.partialTreatmentChoices,
+          behaviorChangeSkippedTreatment: replaySummary.skippedTreatmentChoices - summary.skippedTreatmentChoices,
+          behaviorChangeCareAvoidance: replayCareAvoidance! - (summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices),
+          behaviorChangeCostBurden: replayCostBurden! - originalCostBurden,
+        }
+      : {}),
     attributionCategoryShift: {
       pre: preRevealSurvey.primaryAttribution,
       post: postRevealSurvey.revisedPrimaryAttribution,
@@ -266,6 +293,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     preRevealCommitment: session.preRevealCommitment,
     explanationFrameCondition: session.explanationFrameCondition,
     costVisibilityCondition: session.costVisibilityCondition,
+    replayGame: session.replayGame,
   });
 
   return {
@@ -295,6 +323,7 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
     },
     gameSummary,
     gameRounds: session.game.rounds,
+    ...(session.replayGame ? { replayGame: session.replayGame } : {}),
     preRevealSurvey: session.preRevealSurvey,
     ...(session.preRevealSurveyOriginal ? { preRevealSurveyOriginal: session.preRevealSurveyOriginal } : {}),
     ...(session.preRevealSurveyRevisedAfterReveal ? { preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal } : {}),

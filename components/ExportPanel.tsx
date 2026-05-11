@@ -163,6 +163,8 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
         {completeness.isComplete ? "Export is complete and includes the background profile, game rounds, surveys, and computed metrics." : "Export is not complete yet. Continue the study flow to include all game rounds, surveys, and metrics."}
       </div>
 
+      <ReplayPrompt session={session} />
+
       <SubmissionPanel
         status={session.serverSubmissionStatus ?? (isServerSubmissionEnabled ? "not_submitted" : "not_enabled")}
         serverSubmissionId={session.serverSubmissionId}
@@ -174,6 +176,44 @@ export function ExportPanel({ session: providedSession, title = "Research JSON e
       />
 
       <pre className="max-h-[28rem] overflow-auto rounded-2xl bg-slate-950 p-4 text-xs leading-6 text-slate-100 sm:p-5 sm:text-sm"><code>{json}</code></pre>
+    </div>
+  );
+}
+
+function ReplayPrompt({ session }: { session: ResearchSession }) {
+  const hasCompletedFirstFlow = Boolean(session.game?.completedAt && session.postRevealSurveyCompletedAt);
+
+  if (!hasCompletedFirstFlow) {
+    return null;
+  }
+
+  if (session.replayGame?.completedAt) {
+    return (
+      <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 text-sm leading-6 text-emerald-900">
+        <p className="font-semibold">Optional replay completed.</p>
+        <p>The JSON export and any later server submission now include replayGame and replay behavior-change metrics.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="rounded-3xl border border-research-100 bg-white p-5 text-sm leading-6 text-slate-700 shadow-sm">
+      <h3 className="text-xl font-semibold text-ink">Optional second playthrough</h3>
+      <p className="mt-2 max-w-3xl">
+        You may play one more round sequence before submitting. No additional survey questions will be asked, and replay choices are saved separately from the first game.
+      </p>
+      {session.serverSubmissionStatus === "submitted" ? (
+        <p className="mt-3 rounded-2xl bg-amber-50 p-4 font-medium text-amber-900">
+          This browser session has already been submitted once. If you complete the replay and want the server copy to include it, use Submit again after returning here.
+        </p>
+      ) : (
+        <p className="mt-3 rounded-2xl bg-research-50 p-4 font-medium text-research-900">
+          If you want to add replay data, please do it before optional server submission. You can also skip this and submit normally.
+        </p>
+      )}
+      <a href="/replay-game" className="mt-4 inline-flex rounded-full bg-research-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-research-700 focus:outline-none focus:ring-4 focus:ring-research-100">
+        Play one more round sequence
+      </a>
     </div>
   );
 }
