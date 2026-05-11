@@ -29,6 +29,8 @@ At minimum review:
 - `POSTGRES_PASSWORD` — change the local Docker default before real data collection.
 - `DATABASE_URL` — for native Node deployments, point this at the local/native Postgres database.
 
+Production startup validation runs before `next start`. It refuses the example `ADMIN_EXPORT_TOKEN`, refuses the example PostgreSQL password in `POSTGRES_PASSWORD` or `DATABASE_URL`, and refuses `ENABLE_SERVER_SUBMISSION=true` without `DATABASE_URL`.
+
 Generate secrets with a command such as:
 
 ```bash

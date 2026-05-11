@@ -162,12 +162,13 @@ Start from `.env.example` for local or server configuration.
 | `SUBMISSION_RATE_LIMIT_WINDOW_MS` | Optional | `60000` | Submission API | In-memory rate-limit window for submission attempts. Defaults to 60000 ms. |
 | `SUBMISSION_RATE_LIMIT_MAX` | Optional | `20` | Submission API | Maximum submissions per client key per window. Defaults to 20. |
 | `MAX_SUBMISSION_BODY_BYTES` | Optional | `250000` | Submission API | Maximum accepted submission body size. Defaults to 250000 bytes. |
+| `EXPORT_SUBMISSIONS_LIMIT` | Optional | `500` | Export script | Optional default page size for `npm run export:submissions`; command-line `--limit` takes precedence. |
 | `GOOGLE_SHEETS_WEBHOOK_URL` | Optional | `https://script.google.com/macros/s/.../exec` | Submission API | Optional Google Apps Script webhook URL. When set, successfully stored submissions are mirrored to Google Sheets after PostgreSQL save. |
 | `GOOGLE_SHEETS_WEBHOOK_SECRET` | Recommended with Sheets mirror | `replace-with-a-long-random-secret` | Submission API, Apps Script | Shared secret sent to the webhook for verification. Keep it private and do not append it to sheet rows. |
 | `CONSENT_VERSION` | Optional server metadata fallback | `pilot-consent-v1` | Submission API | Stored as a fallback if a submitted payload lacks `consentVersion`. The client export currently uses the version constant in `utils/researchMetrics.ts`. |
 | `SCHEMA_VERSION` | Present in `.env.example`; not currently read by app code | `research-export-v1` | Deployment convention only | Reserved/configuration note for schema versioning. The client export currently uses the schema version constant in `utils/researchMetrics.ts`. |
 
-For Docker Compose, `.env.example` also includes `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` for the bundled PostgreSQL service.
+For Docker Compose, `.env.example` also includes `POSTGRES_USER`, `POSTGRES_PASSWORD`, and `POSTGRES_DB` for the bundled PostgreSQL service. In `NODE_ENV=production`, `npm run start` refuses to run if `ADMIN_EXPORT_TOKEN`, `POSTGRES_PASSWORD`, or `DATABASE_URL` still contain the example secret values.
 
 
 ## Optional Google Sheets mirror
@@ -472,6 +473,8 @@ Required deployment environment variables for server collection are:
 - `ADMIN_EXPORT_TOKEN` for `/admin` and `/api/admin/*` exports.
 - `APP_BASE_URL` for export helpers and deployment-specific examples.
 
+Production startup validation refuses the example `ADMIN_EXPORT_TOKEN` and PostgreSQL password values, and also refuses `ENABLE_SERVER_SUBMISSION=true` without `DATABASE_URL`. This makes placeholder secrets fail closed instead of being silently accepted.
+
 Optional operational controls are `SUBMISSION_RATE_LIMIT_WINDOW_MS`, `SUBMISSION_RATE_LIMIT_MAX`, and `MAX_SUBMISSION_BODY_BYTES`. They default to safe prototype values when unset, but production deployments should review them for the expected participant volume and hosting topology.
 
 ## Deployment checklist
@@ -483,6 +486,7 @@ Before collecting pilot data:
 - [ ] Set `ENABLE_SERVER_SUBMISSION=true` on the server.
 - [ ] Set `NEXT_PUBLIC_ENABLE_SERVER_SUBMISSION=true` before build so participants see the submission UI.
 - [ ] Use a strong `ADMIN_EXPORT_TOKEN`.
+- [ ] Replace the example `POSTGRES_PASSWORD` before starting production containers.
 - [ ] Install exactly from the lockfile: `npm ci`.
 - [ ] Generate Prisma client: `npm run db:generate`.
 - [ ] Run database migration: `npm run db:migrate` (`npx prisma migrate deploy`).
