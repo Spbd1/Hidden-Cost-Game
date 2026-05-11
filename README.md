@@ -239,6 +239,8 @@ function doPost(e) {
 
 ## Server pilot mode with Docker
 
+For a step-by-step Ubuntu VPS deployment walkthrough, see [VPS Deployment Guide with Docker Compose](docs/VPS_DEPLOYMENT.md).
+
 The Docker Compose setup runs the Next.js app and a private PostgreSQL service. Postgres is not exposed with a public host port by default.
 
 ```bash
