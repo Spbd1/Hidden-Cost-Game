@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { ButtonLink } from "@/components/ButtonLink";
 import { Card } from "@/components/Card";
 import { HelperNote, LikertQuestion, PrimaryButton, SingleChoiceQuestion, TextQuestion } from "@/components/FormControls";
-import { assignPreRevealRevisionAccess, getStoredSession, saveStoredSession } from "@/utils/session";
+import { assignPreRevealRevisionAccess, assignRevealTimingCondition, getStoredSession, saveStoredSession } from "@/utils/session";
 import type { PreRevealSurveyAnswers, ResearchSession } from "@/types/research";
 
 const primaryAttributionOptions = [
@@ -157,16 +157,27 @@ export function PreRevealSurveyForm() {
               blockedAt: session.preRevealRevision?.blockedAt,
             },
           }
-        : {
+        : assignRevealTimingCondition({
             ...session,
-            currentStage: "reveal",
             preRevealSurveyCompletedAt: now,
             preRevealSurvey: submittedAnswers,
             preRevealSurveyOriginal: session.preRevealSurveyOriginal ?? submittedAnswers,
-          };
+          });
 
-    saveStoredSession(updatedSession);
-    router.push(revisionMode === "revision-unlocked" ? "/post-reveal-survey" : "/hidden-rule-reveal");
+    const nextPath =
+      revisionMode === "revision-unlocked"
+        ? "/post-reveal-survey"
+        : updatedSession.revealTimingCondition?.condition === "delayed-reveal"
+          ? "/pre-reveal-reflection"
+          : "/hidden-rule-reveal";
+    const nextStage = revisionMode === "revision-unlocked" ? "post-reveal" : updatedSession.revealTimingCondition?.condition === "delayed-reveal" ? "pre-reveal" : "reveal";
+    const stageSession: ResearchSession = {
+      ...updatedSession,
+      currentStage: nextStage,
+    };
+
+    saveStoredSession(stageSession);
+    router.push(nextPath);
   }
 
   if (revisionMode === "revision-locked") {

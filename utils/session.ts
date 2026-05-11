@@ -1,4 +1,4 @@
-import type { ResearchSession, RevisionAccess, StageId } from "@/types/research";
+import type { ResearchSession, RevealTimingCondition, RevisionAccess, StageId } from "@/types/research";
 
 export const STORAGE_KEY = "hidden-cost-game-session";
 
@@ -70,6 +70,8 @@ function normalizeStoredSession(value: unknown, currentStage: StageId): Research
     preRevealSurveyRevisedAfterReveal: candidate.preRevealSurveyRevisedAfterReveal,
     revisionAccess: candidate.revisionAccess,
     preRevealRevision: candidate.preRevealRevision,
+    revealTimingCondition: candidate.revealTimingCondition,
+    preRevealCommitment: candidate.preRevealCommitment,
     postRevealSurvey: candidate.postRevealSurvey,
     preRevealSurveyStartedAt: candidate.preRevealSurveyStartedAt,
     preRevealSurveyCompletedAt: candidate.preRevealSurveyCompletedAt,
@@ -106,5 +108,21 @@ export function assignPreRevealRevisionAccess(session: ResearchSession): Researc
   return {
     ...session,
     revisionAccess,
+  };
+}
+
+export function assignRevealTimingCondition(session: ResearchSession): ResearchSession {
+  if (session.revealTimingCondition) {
+    return session;
+  }
+
+  const revealTimingCondition: RevealTimingCondition = {
+    condition: Math.random() < 0.5 ? "immediate-reveal" : "delayed-reveal",
+    assignedAt: new Date().toISOString(),
+  };
+
+  return {
+    ...session,
+    revealTimingCondition,
   };
 }
