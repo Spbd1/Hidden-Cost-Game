@@ -152,6 +152,11 @@ function IndividualResults({
     preRevealSurvey,
     postRevealSurvey,
     preRevealSurveyOriginal: session.preRevealSurveyOriginal,
+    preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal,
+    revisionAccess: session.revisionAccess,
+    preRevealRevision: session.preRevealRevision,
+    revealTimingCondition: session.revealTimingCondition,
+    preRevealCommitment: session.preRevealCommitment,
     explanationFrameCondition: session.explanationFrameCondition,
     costVisibilityCondition: session.costVisibilityCondition,
     replayGame: session.replayGame,
@@ -175,7 +180,7 @@ function IndividualResults({
 
       <Card className="space-y-6">
         <SectionHeading title="Computed research metrics" description="These derived values summarize response patterns for prototype analysis. They should be interpreted cautiously and alongside the full context." />
-        <MetricsGrid metrics={computedMetrics} />
+        <MetricsGrid metrics={computedMetrics} session={session} />
       </Card>
 
       <Card className="space-y-6">
@@ -255,7 +260,7 @@ function JudgmentChangeTable({ preRevealSurvey, postRevealSurvey }: { preRevealS
   );
 }
 
-function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
+function MetricsGrid({ metrics, session }: { metrics: ComputedResearchMetrics; session: ResearchSession }) {
   const rows = [
     ["Responsibility Shift", metrics.responsibilityShift],
     ["Constraint Recognition Shift", metrics.constraintRecognitionShift],
@@ -269,16 +274,33 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Care avoidance index", metrics.careAvoidance],
     ["Health-adjusted income loss", metrics.healthAdjustedIncomeLoss ?? 0],
     ["Attribution category shift", `${metrics.attributionCategoryShift.pre} → ${metrics.attributionCategoryShift.post}`],
+    ["Reveal timing condition", session.revealTimingCondition?.condition ?? "Not assigned"],
+    ["Delayed reveal", session.revealTimingCondition ? yesNo(metrics.delayedReveal) : "Not assigned"],
+    ["Stand-by initial interpretation", metrics.standByInitialInterpretation ?? "Not attempted"],
+    ["Revision access", session.revisionAccess?.condition ?? "Not assigned"],
+    ["Revision unlocked", formatOptionalBoolean(metrics.revisionUnlocked, "Not assigned")],
+    ["Pre-reveal revision attempted", session.preRevealRevision ? yesNo(Boolean(metrics.attemptedPreRevealRevision)) : "Not attempted"],
+    ["Used revision opportunity", session.preRevealRevision ? yesNo(Boolean(metrics.usedRevisionOpportunity)) : "Not attempted"],
+    ["Responsibility revision delta", metrics.responsibilityRevisionDelta ?? "Not attempted"],
+    ["Constraint suspicion revision delta", metrics.constraintSuspicionRevisionDelta ?? "Not attempted"],
+    ["Protest legitimacy revision delta", metrics.protestLegitimacyRevisionDelta ?? "Not attempted"],
+    ["Rule correction revision delta", metrics.ruleCorrectionRevisionDelta ?? "Not attempted"],
+    ["Redistribution revision delta", metrics.redistributionRevisionDelta ?? "Not attempted"],
+    ["Confidence revision delta", metrics.confidenceRevisionDelta ?? "Not attempted"],
+    ["Information sufficiency revision delta", metrics.informationSufficiencyRevisionDelta ?? "Not attempted"],
+    ["Changed primary attribution during revision", typeof metrics.changedPrimaryAttribution === "boolean" ? yesNo(metrics.changedPrimaryAttribution) : "Not attempted"],
+    ["Revision magnitude", metrics.revisionMagnitude ?? "Not attempted"],
     ["Remembered responsibility error", metrics.rememberedResponsibilityError],
     ["Remembered constraint suspicion error", metrics.rememberedConstraintSuspicionError],
     ["Remembered attribution matches original", metrics.rememberedPrimaryAttributionMatchesOriginal ? "Yes" : "No"],
     ["Memory confidence", metrics.memoryConfidence],
     ["Memory distortion magnitude", metrics.memoryDistortionMagnitude],
+    ["Explanation frame", metrics.explanationFrame ?? "Not assigned"],
     ["Cost visibility condition", metrics.costVisibilityCondition ?? "Not assigned"],
-    ["Had any cost hint", metrics.hadAnyCostHint ? "Yes" : "No"],
-    ["Had strong cost hint", metrics.hadStrongCostHint ? "Yes" : "No"],
-    ["Replay available", metrics.replayAvailable ? "Yes" : "No"],
-    ["Replay completed", metrics.replayCompleted ? "Yes" : "No"],
+    ["Had any cost hint", yesNo(metrics.hadAnyCostHint)],
+    ["Had strong cost hint", yesNo(metrics.hadStrongCostHint)],
+    ["Replay available", yesNo(metrics.replayAvailable)],
+    ["Replay completed", session.replayGame ? yesNo(metrics.replayCompleted) : "Not attempted"],
     ["Replay assignment", metrics.replayAssignmentCondition ?? "Not played"],
     ["Replay hidden profile", metrics.replayHiddenProfile ?? "Not played"],
     ["Replay full treatment choices", metrics.replayFullTreatmentChoices ?? "Not played"],
@@ -352,6 +374,14 @@ function ResultCard({ label, value }: { label: string; value: string }) {
 
 function rating(value: number, context?: string): string {
   return context ? `${value} / 7 (${context})` : `${value} / 7`;
+}
+
+function formatOptionalBoolean(value: boolean | null | undefined, fallback: string): string {
+  return typeof value === "boolean" ? yesNo(value) : fallback;
+}
+
+function yesNo(value: boolean): string {
+  return value ? "Yes" : "No";
 }
 
 function formatMetric(value: number): string {
