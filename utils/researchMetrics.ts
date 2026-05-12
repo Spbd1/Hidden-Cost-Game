@@ -2,6 +2,7 @@ import { ROUND_INCOME_POINTS, STARTING_FINANCIAL_POINTS } from "@/utils/game";
 import type {
   ComputedResearchMetrics,
   GameChoice,
+  GameRoundData,
   GameSummary,
   HiddenCostGameState,
   PostRevealSurveyAnswers,
@@ -12,8 +13,8 @@ import type {
   TreatmentChoiceCounts,
 } from "@/types/research";
 
-export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-7";
+export const RESEARCH_EXPORT_VERSION = "prototype-1.3";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-8";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -21,6 +22,18 @@ const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
   "partial-treatment": "partialTreatmentChoices",
   "skip-treatment": "skippedTreatmentChoices",
 };
+
+function withRoundIncomeFields(round: GameRoundData): GameRoundData {
+  const baseRoundIncome = round.baseRoundIncome ?? ROUND_INCOME_POINTS;
+  const roundIncome = round.roundIncome ?? roundMetric(round.scoreAfter - round.scoreBefore + round.paidCost);
+
+  return {
+    ...round,
+    roundIncome,
+    baseRoundIncome,
+    healthIncomeMultiplier: round.healthIncomeMultiplier ?? roundMetric(roundIncome / Math.max(baseRoundIncome, 1)),
+  };
+}
 
 export function isPreRevealSurveyComplete(survey: PreRevealSurveyAnswers | undefined): survey is PreRevealSurveyAnswers {
   const openLength = survey?.openExplanation.trim().length ?? 0;
@@ -341,8 +354,15 @@ export function buildResearchExport(session: ResearchSession, createdAt = new Da
       treatmentCostMultiplier: session.game.treatmentCostMultiplier,
     },
     gameSummary,
-    gameRounds: session.game.rounds,
-    ...(session.replayGame ? { replayGame: session.replayGame } : {}),
+    gameRounds: session.game.rounds.map(withRoundIncomeFields),
+    ...(session.replayGame
+      ? {
+          replayGame: {
+            ...session.replayGame,
+            rounds: session.replayGame.rounds.map(withRoundIncomeFields),
+          },
+        }
+      : {}),
     preRevealSurvey: session.preRevealSurvey,
     ...(session.preRevealSurveyOriginal ? { preRevealSurveyOriginal: session.preRevealSurveyOriginal } : {}),
     ...(session.preRevealSurveyRevisedAfterReveal ? { preRevealSurveyRevisedAfterReveal: session.preRevealSurveyRevisedAfterReveal } : {}),

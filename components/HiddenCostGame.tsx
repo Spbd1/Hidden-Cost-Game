@@ -366,6 +366,9 @@ function EventPanel({ event, healthPoints }: { event: MedicalEvent; healthPoints
           <p className="mt-3 leading-7 text-slate-700">
             A care decision is needed this round. Compare the point cost, the income added this round, and the health outcome before choosing.
           </p>
+          <p className="mt-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium leading-6 text-amber-950">
+            Lower health can reduce the points earned in later rounds.
+          </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
             <span className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Base round income: +{formatPoints(ROUND_INCOME_POINTS)} pts</span>
             <span className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Health-adjusted income: +{formatPoints(healthAdjustedIncome)} pts</span>
@@ -484,7 +487,7 @@ function ChoiceButton({
 }
 
 function ResultPanel({ result, mode, onContinue }: { result: RoundResult; mode: "primary" | "replay"; onContinue: () => void }) {
-  const continueLabel = result.isComplete ? (mode === "replay" ? "Return to results" : "Continue to visible results") : "Continue to next round";
+  const continueLabel = result.isComplete ? (mode === "replay" ? "Return to results" : "Continue to score table") : "Continue to next round";
 
   return (
     <section className="rounded-[2rem] border border-emerald-200 bg-emerald-50 p-5 shadow-sm md:p-6" aria-live="polite">
@@ -503,6 +506,10 @@ function ResultPanel({ result, mode, onContinue }: { result: RoundResult; mode: 
         <ResultChange label="Financial points" before={result.round.scoreBefore} after={result.round.scoreAfter} icon="💰" />
         <ResultChange label="Health points" before={result.round.healthBefore} after={result.round.healthAfter} icon="❤️" />
       </div>
+
+      <p className="mt-4 rounded-2xl bg-white p-4 text-sm leading-6 text-slate-700 shadow-sm">
+        This round added +{formatPoints(result.round.roundIncome ?? ROUND_INCOME_POINTS)} health-adjusted income before subtracting -{formatPoints(result.round.paidCost)} treatment cost.
+      </p>
 
       <button
         type="button"
