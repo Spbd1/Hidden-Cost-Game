@@ -96,10 +96,26 @@ export function ResultsTable({ mode = "visible" }: { mode?: ResultsMode }) {
       <ResultsRankingTable players={sortedPlayers} />
 
       <div className="flex justify-end border-t border-slate-200 pt-6">
-        <ButtonLink href="/pre-reveal-survey">Continue to questions</ButtonLink>
+        {session ? <VisibleResultsContinueButton session={session} /> : null}
       </div>
     </Card>
   );
+}
+
+function VisibleResultsContinueButton({ session }: { session: ResearchSession }) {
+  if (isPostRevealSurveyComplete(session.postRevealSurvey)) {
+    return <ButtonLink href="/individual-results">Review results and export data</ButtonLink>;
+  }
+
+  if (session.revealViewedAt) {
+    return <ButtonLink href="/post-reveal-survey">Continue to follow-up</ButtonLink>;
+  }
+
+  if (isPreRevealSurveyComplete(session.preRevealSurvey)) {
+    return <ButtonLink href="/hidden-rule-reveal">Continue to debrief</ButtonLink>;
+  }
+
+  return <ButtonLink href="/pre-reveal-survey">Continue to interpretation questions</ButtonLink>;
 }
 
 function CostVisibilityNote({ condition }: { condition: CostVisibilityConditionName }) {
@@ -193,7 +209,10 @@ function GameSummarySection({ summary }: { summary: GameSummary }) {
         <ResultCard label="Partial treatment choices" value={summary.partialTreatmentChoices.toString()} />
         <ResultCard label="Skipped treatment choices" value={summary.skippedTreatmentChoices.toString()} />
         <ResultCard label="Total treatment cost paid" value={`${formatPoints(summary.totalTreatmentCostPaid)} pts`} />
-        <ResultCard label="Total available income" value={`${formatPoints(summary.totalIncome)} pts`} />
+        <ResultCard label="Actual available income" value={`${formatPoints(summary.totalIncome)} pts`} />
+        <ResultCard label="Round income earned" value={`${formatPoints(summary.totalActualRoundIncome)} pts`} />
+        <ResultCard label="Base income possible" value={`${formatPoints(summary.theoreticalBaseIncome)} pts`} />
+        <ResultCard label="Income reduced by health" value={`${formatPoints(summary.healthAdjustedIncomeLoss)} pts`} />
         <ResultCard label="Assigned profile label" value={summary.assignedProfile} />
       </div>
     </div>
@@ -248,6 +267,7 @@ function MetricsGrid({ metrics }: { metrics: ComputedResearchMetrics }) {
     ["Perspective Change", metrics.perspectiveChange],
     ["Cost burden ratio", metrics.burden],
     ["Care avoidance index", metrics.careAvoidance],
+    ["Health-adjusted income loss", metrics.healthAdjustedIncomeLoss ?? 0],
     ["Attribution category shift", `${metrics.attributionCategoryShift.pre} → ${metrics.attributionCategoryShift.post}`],
     ["Remembered responsibility error", metrics.rememberedResponsibilityError],
     ["Remembered constraint suspicion error", metrics.rememberedConstraintSuspicionError],

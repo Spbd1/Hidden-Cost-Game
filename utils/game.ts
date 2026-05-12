@@ -76,6 +76,30 @@ export function getTreatmentCost(baseCost: number, multiplier: number): number {
   return Number((baseCost * multiplier).toFixed(2));
 }
 
+export function getHealthIncomeMultiplier(healthPoints: number): number {
+  if (healthPoints >= 90) {
+    return 1;
+  }
+
+  if (healthPoints >= 75) {
+    return 0.85;
+  }
+
+  if (healthPoints >= 50) {
+    return 0.65;
+  }
+
+  if (healthPoints >= 25) {
+    return 0.4;
+  }
+
+  return 0.2;
+}
+
+export function getRoundIncomeForHealth(healthPoints: number): number {
+  return Number((ROUND_INCOME_POINTS * getHealthIncomeMultiplier(healthPoints)).toFixed(2));
+}
+
 export function getPaidCost(choice: GameChoice, fullCost: number, partialCost: number): number {
   if (choice === "full-treatment") {
     return fullCost;

@@ -579,6 +579,18 @@ const CSV_COLUMNS: CsvColumn[] = [
     "totalTreatmentCostPaid",
   ]),
   payloadColumn("total_income", ["gameSummary", "totalIncome"]),
+  payloadColumn("total_actual_round_income", [
+    "gameSummary",
+    "totalActualRoundIncome",
+  ]),
+  payloadColumn("theoretical_base_income", [
+    "gameSummary",
+    "theoreticalBaseIncome",
+  ]),
+  payloadColumn("health_adjusted_income_loss", [
+    "gameSummary",
+    "healthAdjustedIncomeLoss",
+  ]),
   payloadColumn("full_treatment_choices", [
     "gameSummary",
     "fullTreatmentChoices",
