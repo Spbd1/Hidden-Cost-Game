@@ -13,7 +13,7 @@ import type {
 } from "@/types/research";
 
 export const RESEARCH_EXPORT_VERSION = "prototype-1.2";
-export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-6";
+export const RESEARCH_SCHEMA_VERSION = "hidden-cost-game-research-schema-7";
 export const RESEARCH_CONSENT_VERSION = "pilot-consent-v1";
 
 const choiceCountKeys: Record<GameChoice, keyof TreatmentChoiceCounts> = {
@@ -78,12 +78,27 @@ export function calculateTotalTreatmentCostPaid(game: HiddenCostGameState): numb
   return roundMetric(game.rounds.reduce((total, round) => total + round.paidCost, 0));
 }
 
-export function calculateTotalIncome(numberOfRounds: number): number {
-  return STARTING_FINANCIAL_POINTS + ROUND_INCOME_POINTS * numberOfRounds;
+export function calculateActualRoundIncomeTotal(game: HiddenCostGameState): number {
+  return roundMetric(game.rounds.reduce((total, round) => total + (round.roundIncome ?? ROUND_INCOME_POINTS), 0));
+}
+
+export function calculateTotalIncome(game: HiddenCostGameState): number {
+  return roundMetric(STARTING_FINANCIAL_POINTS + calculateActualRoundIncomeTotal(game));
+}
+
+export function calculateTheoreticalBaseIncome(numberOfRounds: number): number {
+  return roundMetric(STARTING_FINANCIAL_POINTS + ROUND_INCOME_POINTS * numberOfRounds);
+}
+
+export function calculateHealthAdjustedIncomeLoss(game: HiddenCostGameState): number {
+  return roundMetric(calculateTheoreticalBaseIncome(game.rounds.length) - calculateTotalIncome(game));
 }
 
 export function calculateGameSummary(game: HiddenCostGameState): GameSummary {
   const choiceCounts = calculateTreatmentChoiceCounts(game);
+  const totalActualRoundIncome = calculateActualRoundIncomeTotal(game);
+  const totalIncome = calculateTotalIncome(game);
+  const theoreticalBaseIncome = calculateTheoreticalBaseIncome(game.rounds.length);
 
   return {
     actualHiddenProfile: game.hiddenProfile,
@@ -92,7 +107,10 @@ export function calculateGameSummary(game: HiddenCostGameState): GameSummary {
     finalHealthScore: game.healthPoints,
     ...choiceCounts,
     totalTreatmentCostPaid: calculateTotalTreatmentCostPaid(game),
-    totalIncome: calculateTotalIncome(game.rounds.length),
+    totalIncome,
+    totalActualRoundIncome,
+    theoreticalBaseIncome,
+    healthAdjustedIncomeLoss: roundMetric(theoreticalBaseIncome - totalIncome),
   };
 }
 
@@ -163,6 +181,7 @@ export function calculateComputedResearchMetrics({
     perspectiveChange: postRevealSurvey.perspectiveChange,
     burden: originalCostBurden,
     careAvoidance: summary.skippedTreatmentChoices + 0.5 * summary.partialTreatmentChoices,
+    healthAdjustedIncomeLoss: summary.healthAdjustedIncomeLoss,
     delayedReveal: revealTimingCondition?.condition === "delayed-reveal",
     ...(preRevealCommitment ? { standByInitialInterpretation: preRevealCommitment.standByInitialInterpretation } : {}),
     rememberedResponsibilityError,

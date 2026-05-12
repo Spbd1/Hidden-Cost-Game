@@ -9,7 +9,9 @@ import {
   createReplayGameState,
   formatPoints,
   getHealthAfterChoice,
+  getHealthIncomeMultiplier,
   getPaidCost,
+  getRoundIncomeForHealth,
   getTreatmentCost,
   medicalEvents,
 } from "@/utils/game";
@@ -43,6 +45,9 @@ type RoundResult = {
 type ChoicePreview = {
   choice: GameChoice;
   paidCost: number;
+  roundIncome: number;
+  baseRoundIncome: number;
+  healthIncomeMultiplier: number;
   scoreAfter: number;
   healthAfter: number;
 };
@@ -144,11 +149,15 @@ export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "repla
 
     return (["full-treatment", "partial-treatment", "skip-treatment"] as GameChoice[]).map((choice) => {
       const paidCost = getPaidCost(choice, actualFullCost, actualPartialCost);
+      const roundIncome = getRoundIncomeForHealth(game.healthPoints);
 
       return {
         choice,
         paidCost,
-        scoreAfter: Number((game.financialPoints + ROUND_INCOME_POINTS - paidCost).toFixed(2)),
+        roundIncome,
+        baseRoundIncome: ROUND_INCOME_POINTS,
+        healthIncomeMultiplier: getHealthIncomeMultiplier(game.healthPoints),
+        scoreAfter: Number((game.financialPoints + roundIncome - paidCost).toFixed(2)),
         healthAfter: getHealthAfterChoice(choice, game.healthPoints),
       };
     });
@@ -163,7 +172,11 @@ export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "repla
     const paidCost = getPaidCost(choice, actualFullCost, actualPartialCost);
     const scoreBefore = game.financialPoints;
     const healthBefore = game.healthPoints;
-    const scoreAfter = Number((scoreBefore + ROUND_INCOME_POINTS - paidCost).toFixed(2));
+    // Use health at the start of the round because current health affects earning capacity during that round.
+    const roundIncome = getRoundIncomeForHealth(healthBefore);
+    const baseRoundIncome = ROUND_INCOME_POINTS;
+    const healthIncomeMultiplier = getHealthIncomeMultiplier(healthBefore);
+    const scoreAfter = Number((scoreBefore + roundIncome - paidCost).toFixed(2));
     const healthAfter = getHealthAfterChoice(choice, healthBefore);
     const roundData: GameRoundData = {
       roundNumber: currentEvent.roundNumber,
@@ -176,6 +189,9 @@ export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "repla
       actualPartialCost,
       choice,
       paidCost,
+      roundIncome,
+      baseRoundIncome,
+      healthIncomeMultiplier,
       scoreBefore,
       scoreAfter,
       healthBefore,
@@ -250,7 +266,7 @@ export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "repla
 
       <RoundHeader game={game} event={displayEvent} mode={mode} />
 
-      <EventPanel event={displayEvent} />
+      <EventPanel event={displayEvent} healthPoints={pendingRoundResult ? pendingRoundResult.round.healthBefore : game.healthPoints} />
 
       <div className="grid gap-4 lg:grid-cols-[1fr_1fr_0.8fr]">
         <StatusBar label="Financial points" value={displayFinancialPoints} max={100} icon="💰" />
@@ -280,7 +296,7 @@ export function HiddenCostGame({ mode = "primary" }: { mode?: "primary" | "repla
           </div>
 
           <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm font-semibold leading-6 text-amber-950">
-            What this means: Higher care usually protects health but costs more points. Lower care saves points now but may reduce health points.
+            What this means: Higher care usually protects health but costs more points. Lower care saves points now but may reduce health points. Lower health can reduce the points earned in later rounds.
           </div>
         </>
       )}
@@ -322,8 +338,9 @@ function RoundHeader({ game, event, mode }: { game: HiddenCostGameState | Replay
   );
 }
 
-function EventPanel({ event }: { event: MedicalEvent }) {
+function EventPanel({ event, healthPoints }: { event: MedicalEvent; healthPoints: number }) {
   const icon = getEventIcon(event.eventName);
+  const healthAdjustedIncome = getRoundIncomeForHealth(healthPoints);
 
   return (
     <section
@@ -350,7 +367,8 @@ function EventPanel({ event }: { event: MedicalEvent }) {
             A care decision is needed this round. Compare the point cost, the income added this round, and the health outcome before choosing.
           </p>
           <div className="mt-4 flex flex-wrap gap-3 text-sm font-semibold">
-            <span className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Income this round: +{formatPoints(ROUND_INCOME_POINTS)} pts</span>
+            <span className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Base round income: +{formatPoints(ROUND_INCOME_POINTS)} pts</span>
+            <span className="rounded-full bg-white px-4 py-2 text-slate-700 shadow-sm">Health-adjusted income: +{formatPoints(healthAdjustedIncome)} pts</span>
             <span className="rounded-full bg-white px-4 py-2 capitalize text-slate-700 shadow-sm">Skipping risk: {event.skipRisk}</span>
           </div>
         </div>
@@ -434,23 +452,27 @@ function ChoiceButton({
 
       <span className="mt-5 grid gap-3 text-sm text-slate-700">
         <span className="flex justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3">
-          <span className="font-medium">Cost</span>
+          <span className="font-medium">Treatment cost</span>
           <span className="font-bold text-rose-700">-{formatPoints(preview.paidCost)} pts</span>
         </span>
         <span className="flex justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
-          <span className="font-medium">Income this round</span>
-          <span className="font-bold text-emerald-800">+{formatPoints(ROUND_INCOME_POINTS)} pts</span>
+          <span className="font-medium">Base round income</span>
+          <span className="font-bold text-emerald-800">+{formatPoints(preview.baseRoundIncome)} pts</span>
+        </span>
+        <span className="flex justify-between gap-3 rounded-2xl bg-emerald-50 px-4 py-3">
+          <span className="font-medium">Health-adjusted income</span>
+          <span className="font-bold text-emerald-800">+{formatPoints(preview.roundIncome)} pts</span>
         </span>
         <span className="rounded-2xl border border-research-100 bg-research-50 px-4 py-3">
           <span className="block font-semibold text-research-900">After this choice</span>
           <span className="mt-2 flex justify-between gap-3">
-            <span>Financial points</span>
+            <span>Estimated financial after choice</span>
             <span className="font-bold text-research-900">
               {formatPoints(preview.scoreAfter)} pts ({formatSignedPoints(financialDelta)})
             </span>
           </span>
           <span className="mt-1 flex justify-between gap-3">
-            <span>Health points</span>
+            <span>Estimated health after choice</span>
             <span className="font-bold text-research-900">
               {formatPoints(preview.healthAfter)} pts ({formatSignedPoints(healthDelta)})
             </span>

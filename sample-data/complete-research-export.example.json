@@ -1,6 +1,6 @@
 {
   "exportVersion": "prototype-1.2",
-  "schemaVersion": "hidden-cost-game-research-schema-6",
+  "schemaVersion": "hidden-cost-game-research-schema-7",
   "sessionId": "hcg-example-session",
   "consentVersion": "pilot-consent-v1",
   "serverSubmissionStatus": "not_submitted",
@@ -35,13 +35,16 @@
   "gameSummary": {
     "actualHiddenProfile": "Low coverage",
     "assignedProfile": "Profile B",
-    "finalFinancialScore": 45,
-    "finalHealthScore": 90,
+    "finalFinancialScore": 83.0,
+    "finalHealthScore": 65,
     "fullTreatmentChoices": 3,
     "partialTreatmentChoices": 1,
     "skippedTreatmentChoices": 1,
     "totalTreatmentCostPaid": 155,
-    "totalIncome": 200
+    "totalIncome": 193.0,
+    "totalActualRoundIncome": 93.0,
+    "theoreticalBaseIncome": 200,
+    "healthAdjustedIncomeLoss": 7.0
   },
   "gameRounds": [
     {
@@ -55,12 +58,15 @@
       "actualPartialCost": 10,
       "choice": "full-treatment",
       "paidCost": 20,
-      "scoreBefore": 120,
+      "scoreBefore": 100,
       "scoreAfter": 100,
       "healthBefore": 100,
       "healthAfter": 100,
       "timestamp": "2026-05-08T00:02:00.000Z",
-      "decisionTimeMs": 4200
+      "decisionTimeMs": 4200,
+      "baseRoundIncome": 20,
+      "healthIncomeMultiplier": 1,
+      "roundIncome": 20
     },
     {
       "roundNumber": 2,
@@ -73,12 +79,15 @@
       "actualPartialCost": 15,
       "choice": "partial-treatment",
       "paidCost": 15,
-      "scoreBefore": 120,
+      "scoreBefore": 100,
       "scoreAfter": 105,
       "healthBefore": 100,
       "healthAfter": 90,
       "timestamp": "2026-05-08T00:04:00.000Z",
-      "decisionTimeMs": 5100
+      "decisionTimeMs": 5100,
+      "baseRoundIncome": 20,
+      "healthIncomeMultiplier": 1,
+      "roundIncome": 20
     },
     {
       "roundNumber": 3,
@@ -91,12 +100,15 @@
       "actualPartialCost": 20,
       "choice": "full-treatment",
       "paidCost": 40,
-      "scoreBefore": 125,
+      "scoreBefore": 105,
       "scoreAfter": 85,
       "healthBefore": 90,
       "healthAfter": 90,
       "timestamp": "2026-05-08T00:06:00.000Z",
-      "decisionTimeMs": 3900
+      "decisionTimeMs": 3900,
+      "baseRoundIncome": 20,
+      "healthIncomeMultiplier": 1,
+      "roundIncome": 20
     },
     {
       "roundNumber": 4,
@@ -109,12 +121,15 @@
       "actualPartialCost": 25,
       "choice": "skip-treatment",
       "paidCost": 0,
-      "scoreBefore": 105,
+      "scoreBefore": 85,
       "scoreAfter": 105,
       "healthBefore": 90,
       "healthAfter": 65,
       "timestamp": "2026-05-08T00:08:00.000Z",
-      "decisionTimeMs": 6100
+      "decisionTimeMs": 6100,
+      "baseRoundIncome": 20,
+      "healthIncomeMultiplier": 1,
+      "roundIncome": 20
     },
     {
       "roundNumber": 5,
@@ -127,12 +142,15 @@
       "actualPartialCost": 15,
       "choice": "full-treatment",
       "paidCost": 35,
-      "scoreBefore": 125,
-      "scoreAfter": 90,
+      "scoreBefore": 105,
+      "scoreAfter": 83.0,
       "healthBefore": 65,
       "healthAfter": 65,
       "timestamp": "2026-05-08T00:09:00.000Z",
-      "decisionTimeMs": 4700
+      "decisionTimeMs": 4700,
+      "baseRoundIncome": 20,
+      "healthIncomeMultiplier": 0.65,
+      "roundIncome": 13.0
     }
   ],
   "preRevealSurvey": {
@@ -170,7 +188,7 @@
     "certaintyCorrection": 2,
     "informationCaution": 4,
     "perspectiveChange": 6,
-    "burden": 0.775,
+    "burden": 0.8031,
     "careAvoidance": 1.5,
     "delayedReveal": false,
     "rememberedResponsibilityError": -1,
@@ -187,7 +205,8 @@
     "hadAnyCostHint": false,
     "hadStrongCostHint": false,
     "replayAvailable": true,
-    "replayCompleted": false
+    "replayCompleted": false,
+    "healthAdjustedIncomeLoss": 7.0
   },
   "completeness": {
     "hasParticipantProfile": true,

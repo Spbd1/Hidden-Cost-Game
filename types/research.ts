@@ -70,6 +70,9 @@ export interface GameRoundData {
   actualPartialCost: number;
   choice: GameChoice;
   paidCost: number;
+  roundIncome?: number;
+  baseRoundIncome?: number;
+  healthIncomeMultiplier?: number;
   scoreBefore: number;
   scoreAfter: number;
   healthBefore: number;
@@ -138,6 +141,9 @@ export interface GameSummary extends TreatmentChoiceCounts {
   finalHealthScore: number;
   totalTreatmentCostPaid: number;
   totalIncome: number;
+  totalActualRoundIncome: number;
+  theoreticalBaseIncome: number;
+  healthAdjustedIncomeLoss: number;
 }
 
 export interface AttributionCategoryShift {
@@ -197,6 +203,7 @@ export interface ComputedResearchMetrics {
   perspectiveChange: number;
   burden: number;
   careAvoidance: number;
+  healthAdjustedIncomeLoss?: number;
   attributionCategoryShift: AttributionCategoryShift;
   usedRevisionOpportunity?: boolean;
   revisionUnlocked?: boolean | null;
